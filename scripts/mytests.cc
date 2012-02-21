@@ -3,15 +3,25 @@
 #include "DQM/EcalCommon/interface/Numbers.h"
 #include "DataFormats/EcalDetId/interface/EcalTrigTowerDetId.h"
 #include <vector>
-
-
-
-
+#include <fstream>
+#include <iostream>
+#include <string>
+#include <math.h>
+using namespace std;
 
 void GetCCUIdandTimingShiftFromHist(const TProfile2D* myprof,const int iz)
 {
   int nxbins = myprof->GetNbinsX();
   int nybins = myprof->GetNbinsY();
+
+  ofstream CCUideb, CCUideep, CCUideem;
+
+  CCUideb.open("CCUId_In_EB_And_TimeShift.txt",fstream::in | fstream::out);
+
+  CCUideep.open("CCUId_In_EEPlus_And_TimeShift.txt",fstream::in | fstream::out);
+
+  CCUideem.open("CCUId_In_EEMinus_And_TimeShift.txt",fstream::in | fstream::out);
+  
 
   //EB    In EB CCU == Trigger Tower
   std::vector<EcalTrigTowerDetId> CCUIdVecEB;
@@ -109,6 +119,46 @@ void GetCCUIdandTimingShiftFromHist(const TProfile2D* myprof,const int iz)
 				
 	      }
 	   } // end of EE Plus
+
+
+  if(CCUideb.is_open()){ cout << "CCUIdEB File is open write in it" <<endl;}
+  if(CCUideep.is_open()){ cout << "CCUIdEEP File is open, write" << endl;}
+  if(CCUideem.is_open()){cout << " CCUIdEEM File is open, write" << endl;}
+
+
+  // write EB CCUs
+  if(CCUIdVecEB.size()==CCUIdTimeEB.size())
+	{
+	  for( int ii = 0; ii < CCUIdVecEB.size(); ii++)
+		{
+		  CCUIdeb << CCUIdVecEB[ii] << "Has TimeShiftOf" << CCUIdTimeEB[ii] <<"(ns)"<< "\n";
+		}
+	}
+
+  //Write EEP CCUs
   
+  if(CCUIdVecEEP.size()==CCUIdTimeEEP.size())
+	{
+	  for( int ii = 0; ii < CCUIdVecEEP.size(); ii++)
+		{
+		  CCUIdeep << CCUIdVecEEP[ii] << "Has TimeShiftOf" << CCUIdTimeEEP[ii] <<"(ns)"<< "\n";
+		}
+	}
+
+  //EEMinus
+  if(CCUIdVecEEM.size()==CCUIdTimeEEM.size())
+	{
+	  for( int ii = 0; ii < CCUIdVecEEM.size(); ii++)
+		{
+		  CCUIdeem << CCUIdVecEEM[ii] << "Has TimeShiftOf" << CCUIdTimeEEM[ii] <<"(ns)"<< "\n";
+		}
+	}
+
+
+  cout << " CLose all files now" << endl;
+
+  CCUIdeb.close();
+  CCUIdeep.close();
+  CCUIdeem.close();
   return;
 }
