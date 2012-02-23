@@ -31,7 +31,7 @@
 #define ETA_MAX   +3.
 
 
-#define RunB4TS 158891 //176455 //159218 //175573  //178854 //178731  // 162518 //160147    // 176652  // 160138    // 160133       // 160111 // 159784 //175832  // 175354 //159784 //1611175
+#define RunB4TS 160111 //176455 //159218 //175573  //178854 //178731  // 162518 //160147    // 176652  // 160138    // 160133       // 160111 // 159784 //175832  // 175354 //159784 //1611175
 #define RunAFTS 160138 //177727 //160006 //177930 //178241
 
 
@@ -154,12 +154,6 @@ struct ntu_xtals {
     float pnB_tpS[NWL];
 };
 
-// char * hprofnameEBminus = new  char[18];
-// char * hprofnameEBplus = new char[18];
-// std::string bufferTitleEBplus;
-// std::string bufferTitleEBminus;
-
-
 // TProfile2D* CCUAvgTimingEBplus[18];   //= {610,611,612,613,614,615,616,617,618,619,620,621,622,623,624,625,626,627};
 // TProfile2D* CCUAvgTimingEBminus[18];   //= {628,629,630,631,632,633,634,635,636,637,638,639,640,641,642,643,644,645};
 
@@ -167,14 +161,9 @@ TProfile2D* FedAvgTimingEB;
 TProfile2D* FedAvgTimingEEP;
 TProfile2D* FedAvgTimingEEM;
 // Run B
-
-
 TProfile2D* FedAvgTimingEB_RunB;
 TProfile2D* FedAvgTimingEEP_RunB;
 TProfile2D* FedAvgTimingEEM_RunB;
-
-
-
 
 
 // TH1F* CCUTimeDiffPlot = new TH1F("CCUTimeDiffPlot","Time Shift Of CCU in EB FED",100, -2.5 , 2.5);
@@ -276,16 +265,10 @@ TDirectory* TimingShiftEEM = savefile->mkdir("TimingShiftFromLaserEEM");
 	 CCUTimeShiftEEM[m]->GetYaxis()->SetTitle("iy");
 	 CCUTimeShiftEEM[m]->Draw("colztext");
 	 CCUTimeShiftEEM[m]->Write();
-   }
-
-
-
- 
-  TDirectory * TestPlots = savefile->mkdir("LaserTiming");
+   } 
+ TDirectory * TestPlots = savefile->mkdir("LaserTiming");
 
   TestPlots->cd();
-
-
   XtaltimeVsAmpEB->Write();
   XtaltimeVsAmpEE->Write();
   //  XtaltimeVsTimeEB->Write();
@@ -305,13 +288,6 @@ TDirectory* TimingShiftEEM = savefile->mkdir("TimingShiftFromLaserEEM");
   // EB 1D tests
     EBP1Dtime->Write();
 	EBM1Dtime->Write();
-
-  // Timing Check Here
-  //CCUTimeDiffPlot->Write();
-
- // CCUTimeB4TS->Write();
-
-//  CCUTimeAFTS->Write();
 
 // EB All SM
 FedAvgTimingEB->GetXaxis()->SetTitle("i#phi");
@@ -352,8 +328,6 @@ for( int numfed = 0; numfed < numEBFed; numfed++)
 
 
 // DO EE   Here!
-
-
  for( int eeSec= 0; eeSec < 9; eeSec++)
    {
 	 // for EE Plus
@@ -369,11 +343,7 @@ for( int numfed = 0; numfed < numEBFed; numfed++)
 	 CCUAvgTimeEEM_RunA[eeSec]->Write();
 	 
    }
- 
-
-
-
- TDirectory* CCUInEB_RunB = savefile->mkdir("CCUInEBFedsTime_RunB");
+TDirectory* CCUInEB_RunB = savefile->mkdir("CCUInEBFedsTime_RunB");
 
  CCUInEB_RunB->cd();
 
@@ -403,9 +373,7 @@ CCUAvgTimeEB_RunB[fednum]->Write();
 	 CCUAvgTimeEEM_RunB[eeSec]->Write();	 
    }
   
- 
  // EB Plus
-
   // Run B
  FedAvgTimingEEP_RunB->GetXaxis()->SetTitle("ix");
  FedAvgTimingEEP_RunB->GetYaxis()->SetTitle("iy");
@@ -450,41 +418,120 @@ FedAvgTimingEB_RunB->Write();
   XtaltimeVsEta_RunB->Write();
   XtaltimeVsRun_RunB->Write();
 
-//******New Folder For CCU Hists EB RunB ******//// 
-// TDirectory * CCUInEB_RunB = savefile->mkdir("CCUInEBFedsTimeRunB");
-
-//  CCUInEB_RunB->cd();
- 
-//  for(int SM = 0;; SM < numEBFed; SM++)
-//    {
-// 	 CCUAvgTimeSM[SM]->GetXaxis()->SetTitle("i#phi");
-// 	 CCUAvgTimeSM[SM]->GetYaxis()->SetTitle("i#eta");
-// 	 CCUAvgTimeSM[SM]->Write(); 
-//    }
  
 } //  end of fxn Writehist
 
 
-//////&&&&&&&&& Funtion to Substract Hists &&&&&&&&&&&&&&&&/////////////////
+////### Fxn To make bins empty bins show as white on Canvas ////////
 
-TProfile2D* CCUTimingShiftFromLaser( TProfile2D* hprof_runA, TProfile2D* hprof_runB)
+void moveBinsTProfile2D(TProfile2D* myprof)
+{
+  int nxbins = myprof->GetNbinsX();
+  int nybins = myprof->GetNbinsY();
+
+  for(int i=0; i<=(nxbins+2)*(nybins+2); i++ )
+  {
+    Double_t binents = myprof->GetBinEntries(i);
+    if(binents == 0)
+    {
+      myprof->SetBinEntries(i,1);
+      myprof->SetBinContent(i,-1000);
+    }
+  }
+  return;
+} // End of fxn to Move bins
+
+
+
+
+/////////&&&&&& Trial Fxn To calculate TprofSubtract &&&&&&&/////////
+TProfile2D* SubtractTwoTProfile2D( TProfile2D* hprof_runA, TProfile2D* hprof_runB)
+{
+  if(!hprof_runA){cout << "No input histograms was put" << endl;}
+
+  // TProfile2D*  clonehprof = (TProfile2D*)hprof_runA->Clone("CCUMeantimeDiff");
+
+  int nxbinsA = hprof_runA->GetNbinsX();
+  int nybinsA = hprof_runA->GetNbinsY();
+
+  int nxbinsB = hprof_runB->GetNbinsX();
+  int nybinsB = hprof_runB->GetNbinsY();
+
+  
+  cout <<" Number of Xbins in Run A = " << nxbinsA << " And Number of YBins in Run A = " << nybinsA << endl;
+
+  cout <<" Number of Xbins in Run B = " << nxbinsB << " And Number of YBins in Run B = " << nybinsB << endl;
+
+  
+  // Define New Histogram to hold CCU Time Shift
+  TProfile2D *result_hprof =(TProfile2D*)hprof_runA->Clone("MynewCCUMeanTimehprof");
+
+  result_hprof->Reset();
+  
+  // loop over bins of both hists:
+  if( nxbinsA == nxbinsB && nybinsA == nybinsB)
+{
+  for( int ixa = 1; ixa <= nxbinsA; ixa++)
+	{
+	  for( int iya = 1; iya <= nybinsA; iya++)
+		{
+          int binsA = hprof_runA->GetBin(ixa, iya);
+
+		  int binsB = hprof_runB->GetBin(ixa, iya);
+		  // Get CCU time for A and B
+		  float timeA = hprof_runA->GetBinContent(binsA);
+		  float timeB = hprof_runB->GetBinContent(binsB);
+
+		  // Time Diff
+		  float timeshift = timeA - timeB;
+
+		  result_hprof->SetBinContent(binsA, timeshift);
+		  result_hprof->SetBinEntries(binsA, 1);
+
+		  //result_hprof->Fill(ixa, iya, timeshift);
+
+		  //debug if the right thinsg is being done
+
+		  cout <<" Bins = " << "[" << ixa << "," << iya << "]" <<" and has "<< " timeA = " << timeA << " and timeB = " << timeB << " with time Difference = " << timeshift << endl;
+		}
+	}
+ }
+  
+  return result_hprof;
+  
+} // end of  Trial Subtract
+
+
+
+
+//////&&&&&&&&& Version 1 Funtion to Substract Hists &&&&&&&&&&&&&&&&/////////////////
+
+TProfile2D* SubtractHistProf( TProfile2D* hprof_runA, TProfile2D* hprof_runB)
 {
   if(!hprof_runA){cout << "No input histograms was put" << endl;}
 
   TProfile2D*  clonehprof = (TProfile2D*)hprof_runA->Clone("CCUMeantimeDiff");
+  //   TProfile2D*  clonehprof = (TProfile2D*)hprof_runA->Clone(hprof_runA->GetName());
 
   //subtract Histograms:
-  clonehprof->Add(hprof_runB, -1);
-  clonehprof->SetMinimum(-5);
-  clonehprof->SetMaximum(-5);
+    clonehprof->Add(hprof_runB, -1);
+	// hprof_runA->Add(hprof_runB, -1);
+    moveBinsTProfile2D(clonehprof);
+	// moveBinsTProfile2D(hprof_runA);
+    clonehprof->SetMinimum(-5);
+    clonehprof->SetMaximum(5);
+  // hprof_runA->SetMinimum(-5);
+  // hprof_runA->SetMaximum(5);
 
   return clonehprof;
+  // return hprof_runA;
 } // end of fxn to subtract hists
 
 
 
 
 
+//  CLass Defining Each Xtal
 struct ntu_xtals x;
 
 
@@ -582,7 +629,7 @@ int eewl[] = { 440, 455, 617 };
 
 
 
-// Helper functions
+////////////&&&&&&&&& Function To Check IF Xtal is in EB or EE &&&&&&&&&&&&&&//////////////////
 int isEB(int ifed)
 {
     return (ifed >= 610 && ifed <= 645);
@@ -621,6 +668,8 @@ for( int hnum = 0; hnum < numEBFed; hnum++)
 		//fedhistname +="EB";
 		fedhistname += ConvertIntToString(( hnum + 610));
 		fedhistname +=ConvertIntToString(-hnum);
+
+	    fedhistname +="_RunA";
         CCUAvgTimeEB_RunA[hnum] = new TProfile2D(fedhistname.c_str(),fedhistname.c_str(),4,1,21,17,1.,86);
 		
 		// For Run B
@@ -636,6 +685,7 @@ for( int hnum = 0; hnum < numEBFed; hnum++)
 			fedhistname += ConvertIntToString(( hnum + 610));
 			fedhistname +=ConvertIntToString(hnum-18);
 
+		    fedhistname +="_RunA";
 			CCUAvgTimeEB_RunA[hnum] = new TProfile2D(fedhistname.c_str(),fedhistname.c_str(),4,1,21,17,1,86);
 			// For Run B
 			fedhistname +="_RunB";
@@ -648,8 +698,8 @@ for( int hnum = 0; hnum < numEBFed; hnum++)
 		  }
   }
 
+ 
 // Do EE Here!
-
 //	 CCUAvgTimeEEP_RunA[eeSec]
 for( int eeMnum = 0; eeMnum < 9; eeMnum++)
   {
@@ -659,6 +709,7 @@ for( int eeMnum = 0; eeMnum < 9; eeMnum++)
 	//For Run A EE Minus
 		fedhistname += ConvertIntToString(( eeMnum + 601));
 		//		fedhistname +=ConvertIntToString(-hnum);
+		fedhistname +="_RunA";
         CCUAvgTimeEEM_RunA[eeMnum] = new TProfile2D(fedhistname.c_str(),fedhistname.c_str(),20,0.0,100,20,0.,100);
 		
 		// For Run B
@@ -671,6 +722,8 @@ for( int eeMnum = 0; eeMnum < 9; eeMnum++)
 		//RunA
 		std::string EESecname = "CCU_Mean_Time_EEPlus";
 		EESecname += ConvertIntToString(eeMnum + 646);
+
+			EESecname +="_RunA";
 		CCUAvgTimeEEP_RunA[eeMnum] = new TProfile2D(EESecname.c_str(),EESecname.c_str(), 20, 0., 100, 20, 0.,100);
 
 		// For Run B
@@ -699,10 +752,10 @@ for( int eeMnum = 0; eeMnum < 9; eeMnum++)
 
 
 //EB All SM
- FedAvgTimingEB = new TProfile2D("FedAvgTimingEB","CCU Mean Time EB", 360, 1., 361., 171, -85,85);
+ FedAvgTimingEB = new TProfile2D("FedAvgTimingEB","CCU Mean Time EB", 360, 1., 361, 171, -85,85);
 
  // run B
-FedAvgTimingEB_RunB = new TProfile2D("FedAvgTimingEB_RunB","CCU Mean Time EB", 360, 1., 361., 171, -85,85);
+FedAvgTimingEB_RunB = new TProfile2D("FedAvgTimingEB_RunB","CCU Mean Time EB", 360, 1., 361, 171, -85,85);
 
 //EE plus
  FedAvgTimingEEP = new TProfile2D("FedAvgTimingEEP","CCU Mean Time EE+", 100, 0., 100., 100, 0, 100);
@@ -719,7 +772,7 @@ FedAvgTimingEB_RunB = new TProfile2D("FedAvgTimingEB_RunB","CCU Mean Time EB", 3
 
 
  // Ssave Out Put Files  here!
-    savefile = new TFile("EcalLaserTiming_New_158891Vs160138.root", "recreate");
+    savefile = new TFile("EcalLaserTiming_Trial_New_160111Vs160138.root", "recreate");
 
     init_ttree(tx, &x);
     tx->SetBranchStatus("*",0); //disable all branches
@@ -742,7 +795,6 @@ FedAvgTimingEB_RunB = new TProfile2D("FedAvgTimingEB_RunB","CCU Mean Time EB", 3
     tx->SetBranchStatus("qmax",1);
     tx->SetBranchStatus("tmax",1);
 
-
 	
 
     int nbytes = -1;
@@ -752,6 +804,8 @@ FedAvgTimingEB_RunB = new TProfile2D("FedAvgTimingEB_RunB","CCU Mean Time EB", 3
 	EBDetId ebdetid;
         EEDetId eedetid;
 
+
+		
 // Loop over Crystals Begin Here!  
 while ((nbytes = tx->GetEntry(ientry++)) != 0)
  {
@@ -808,7 +862,7 @@ if(x.run == RunB4TS && x.seq == 0)
 	    XtaltimeVsFedIDEB->Fill(x.fed,(x.tmax[0]-5)*25);
 
 	     xtaltimeDistEB->Fill( x.tmax[0]-5);
-             FedAvgTimingEB->Fill(iphi,ieta,(x.tmax[0]-5)*25);
+		 FedAvgTimingEB->Fill(x.iy+10,x.ix,(x.tmax[0]-5)*25);  // making some changes here Now!
 
 		 //   Do EE  here!
  }else{
@@ -924,7 +978,7 @@ if(x.run == RunAFTS && x.seq == 0)
 	    XtaltimeVsFedIDEB_RunB->Fill(x.fed,(x.tmax[0]-5)*25);
 
 	     xtaltimeDistEB_RunB->Fill( x.tmax[0]-5);
-         FedAvgTimingEB_RunB->Fill(iphi,ieta,(x.tmax[0]-5)*25);
+         FedAvgTimingEB_RunB->Fill(x.iy+10,x.ix,(x.tmax[0]-5)*25); //  same changes here now!
 
 		 //   Do EE  here!
  }else{
@@ -984,23 +1038,50 @@ if( numcrys > 75838) break;
  
 }// end of Loop over entries( xtals)
 
+
  
- // now Do hist subtraction Here!
+/// Calculate CCU Time Shift Here!////////
 
  //loop over all hists
  // EB
    for( int nh = 0; nh < numEBFed; nh++)
 	 {
-	   CCUTimeShiftEB[nh]=CCUTimingShiftFromLaser(CCUAvgTimeEB_RunA[nh], CCUAvgTimeEB_RunB[nh]);
+	  
+	   
+	   CCUTimeShiftEB[nh]= SubtractTwoTProfile2D(CCUAvgTimeEB_RunA[nh], CCUAvgTimeEB_RunB[nh]);
+	    	   
 	 }
+
+   // Debug issues
+       int binA = CCUAvgTimeEB_RunA[0]->GetBin(4,17);
+       float binvalueA = CCUAvgTimeEB_RunA[0]->GetBinContent(binA);
+	   int  binEntryA =  CCUAvgTimeEB_RunA[0]->GetBinEntries(binA);
+
+	   int binB = CCUAvgTimeEB_RunB[0]->GetBin(4,17);
+	   float binvalueB = CCUAvgTimeEB_RunB[0]->GetBinContent(binB);
+	   int  binEntryB =  CCUAvgTimeEB_RunB[0]->GetBinEntries(binB);
+
+	   int bind = CCUTimeShiftEB[0]->GetBin(4,17);
+	   float binvalue = CCUTimeShiftEB[0]->GetBinContent(bind);
+	   int  binEntry   =  CCUTimeShiftEB[0]->GetBinEntries(bind);
+	  
+   
+
+   cout << "RunA has Entries=" << binEntryA << " With Time=" <<  binvalueA << endl;
+   cout << "RunB has Entries=" << binEntryB << " With Time=" <<  binvalueB << endl;
+
+
+   cout << "Diff In Run  has Entries=" << binEntry << " With Time=" <<  binvalue << endl;
+
+   
 
    //EE
    for ( int eenh = 0; eenh < numSC; eenh++)
 	 {
 	   //EE plus
-	   CCUTimeShiftEEP[eenh]=CCUTimingShiftFromLaser(CCUAvgTimeEEP_RunA[eenh], CCUAvgTimeEEP_RunB[eenh]); 
+	   CCUTimeShiftEEP[eenh]= SubtractTwoTProfile2D(CCUAvgTimeEEP_RunA[eenh], CCUAvgTimeEEP_RunB[eenh]); 
 	   //EE Minus   
-	   CCUTimeShiftEEM[eenh]=CCUTimingShiftFromLaser(CCUAvgTimeEEP_RunA[eenh], CCUAvgTimeEEP_RunB[eenh]); 
+	   CCUTimeShiftEEM[eenh]= SubtractTwoTProfile2D(CCUAvgTimeEEP_RunA[eenh], CCUAvgTimeEEP_RunB[eenh]); 
 	 }
    
     cout << " Write Histograms" << endl;
