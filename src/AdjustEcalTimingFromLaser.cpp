@@ -1,4 +1,4 @@
-
+// Calculate the Timing Shift from Laser data @laTEN
 // Include Ecal Stuff Here!
 #include "DQM/EcalCommon/interface/Numbers.h"
 #include "DataFormats/EcalDetId/interface/EcalSubdetector.h"
@@ -24,6 +24,11 @@
 #include "TChain.h"
 #include "TFile.h"
 #include "TProfile2D.h"
+#include "TCanvas.h"
+#include "TStyle.h"
+
+// Get CCU Timing.
+#include "CalibCalorimetry/EcalTiming/bin/GetCCUIdAndTimeFromTProfileHist.h"
 
 #define NWL 3 // if you change this, mind to change the Branch declaration of TTree...
 #define ETA_NBIN 100
@@ -31,15 +36,30 @@
 #define ETA_MAX   +3.
 
 
-#define RunB4TS 160111 //176455 //159218 //175573  //178854 //178731  // 162518 //160147    // 176652  // 160138    // 160133       // 160111 // 159784 //175832  // 175354 //159784 //1611175
-#define RunAFTS 160138 //177727 //160006 //177930 //178241
+#define RunB4TS 163291 //163297//163291 //163332 //162765 //161020//161018//160111 //176455 //159218 //175573  //178854 //178731  // 162518 //160147    // 176652  // 160138    // 160133       // 160111 // 159784 //175832  // 175354 //159784 //1611175
+#define RunAFTS 163333 //163483 //163333 //163869 //163078//162765 //162764 //160138 //177727 //160006 //177930 //178241
 
+
+// defineDirectoryname
+
+//GetCCUIdandTimeShift
+GetCCUIdAndTimeFromTProfileHist* getCCUId = 0;
+
+const std::string dirname ="LaserTimingShiftRun163297VsRun1634833";
 
 const int numEBFed  = 36;
 const int maxNumCCUInFed = 68;
 const int mxNumXtalInCCU = 25;
 const int numSC = 9;
 
+// Set Max and Min on Each Runs.
+const int  binlow = -50.0;
+const int  binhigh = 50.0;
+
+
+// SetMaximum Minimum of Bins on TimeshiftHist
+const int lbin = -5.0;
+const int hbin =  5.0;
 
 
 // EB Histos
@@ -61,6 +81,10 @@ TProfile2D* CCUTimeShiftEB[numEBFed];
 TProfile2D* CCUTimeShiftEEP[numSC];
 
 TProfile2D* CCUTimeShiftEEM[numSC];
+
+TProfile2D* CrysTimeShiftEB;
+TProfile2D* CrysTimeShiftEEP;
+TProfile2D* CrysTimeShiftEEM;
 
 
 using namespace std;
@@ -172,61 +196,88 @@ TProfile2D* FedAvgTimingEEM_RunB;
 
 
 // Xatl time Vs Amplitude EB and EE
-TH2F*   XtaltimeVsAmpEB = new TH2F("XtaltimeVsAmpEB", "Crystal In EB Time Vs Amplitude",  100, 0, 4000,100, -25.0, 25.0 );
-TH2F*   XtaltimeVsAmpEE = new TH2F("XtaltimeVsAmpEE", "Crystal In EE Time Vs Amplitude",  100, 0, 4000,100, -25.0, 25.0 );
+TH2F*   XtaltimeVsAmpEB = new TH2F("XtaltimeVsAmpEB", "Crystal In EB Time Vs Amplitude",  100, 0, 4000,100, binlow, binhigh );
+TH2F*   XtaltimeVsAmpEE = new TH2F("XtaltimeVsAmpEE", "Crystal In EE Time Vs Amplitude",  100, 0, 4000,100, binlow, binhigh );
 //  Time of 1d
-TH1F*  xtaltimeDistEB = new TH1F("xtaltimeEB","Crystal Time Distrubution",100, -25, 25);
-TH1F*  xtaltimeDistEE = new TH1F("xtaltimeEE","Crystal Time Distrubution",100, -25, 25);
+TH1F*  xtaltimeDistEB = new TH1F("xtaltimeEB","Crystal Time Distrubution",100, binlow, binhigh);
+TH1F*  xtaltimeDistEE = new TH1F("xtaltimeEE","Crystal Time Distrubution",100, binlow, binhigh);
 
 
 // Xtal time Vs Time Measured EB and EE
 //TH2F*   XtaltimeVsTimeEB = new TH2F("XtaltimeVsTimeEB", "Crystal  In EB Time  Vs Time Measured", 100, 0, 10000000, 100, -25, 25 ); 
 //TH2F*   XtaltimeVsTimeEE = new TH2F("XtaltimeVsTimeEE", "Crystal  In EE Time  Vs Time Measured", 100, 0, 10000000,100, -25, 25 );
 // Xtal time Vs FedId
-TH2F*   XtaltimeVsFedIDEB = new TH2F("XtaltimeVsFedIDEB", "Crystal Time[ns] Vs FedId In EB only", 54, 601, 655, 100, -25, 25 );
-TH2F*   XtaltimeVsFedIDEE = new TH2F("XtaltimeVsFedIDEE","Crystal Time[ns] Vs FedId In EE Only",  54,  601,  655, 100, -25, 25); 
+TH2F*   XtaltimeVsFedIDEB = new TH2F("XtaltimeVsFedIDEB", "Crystal Time[ns] Vs FedId In EB only", 54, 601, 655, 100, binlow, binhigh );
+TH2F*   XtaltimeVsFedIDEE = new TH2F("XtaltimeVsFedIDEE","Crystal Time[ns] Vs FedId In EE Only",  54,  601,  655, 100, binlow, binhigh); 
 //Xtal Time Vs Lumi
-TH2F*   XtaltimeVsLumiEB = new TH2F("XtaltimeVsLumiEB", "Crystal  In EB Time  Vs Lumi", 100, 0, 4000,100, -25, 25 );
+TH2F*   XtaltimeVsLumiEB = new TH2F("XtaltimeVsLumiEB", "Crystal  In EB Time  Vs Lumi", 100, 0, 4000,100, binlow, binhigh );
 // xtak Time Vs Eta EB   
-TH2F*   XtaltimeVsEta = new TH2F("XtaltimeVsEta", "Crystal  In EB Time  Vs Eta", 10, -3, 3,100, -25, 25 );
+TH2F*   XtaltimeVsEta = new TH2F("XtaltimeVsEta", "Crystal  In EB Time  Vs Eta", 10, -3, 3,100, binlow, binhigh );
 //xtal Time Vs Run Number
-TH2F*   XtaltimeVsRun = new TH2F("XtaltimeVsRun", "Crystal  In EB Time  Vs Run Number", 100, 150000, 190000, 100, -25, 25);
+TH2F*   XtaltimeVsRun = new TH2F("XtaltimeVsRun", "Crystal  In EB Time  Vs Run Number", 100, 150000, 190000, 100, binlow, binhigh);
 
 
-TH1F* EBP1Dtime =  new TH1F("EBP1Dtime","EB-1 Timing [ns]", 100, -25, 25);
+TH1F* EBP1Dtime =  new TH1F("EBP1Dtime","EB-1 Timing [ns]", 100, binlow, binhigh);
 
 
-TH1F* EBM1Dtime =  new TH1F("EBM1Dtime","EB+1 Timing [ns]", 100, -25, 25);
+TH1F* EBM1Dtime =  new TH1F("EBM1Dtime","EB+1 Timing [ns]", 100, binlow, binhigh);
 
 
 
 // Run Bs
 // Xatl time Vs Amplitude EB and EE
-TH2F*   XtaltimeVsAmpEB_RunB = new TH2F("XtaltimeVsAmpEB_RunB", "Crystal In EB Time Vs Amplitude",  100, 0, 4000,100, -25.0, 25.0 );
-TH2F*   XtaltimeVsAmpEE_RunB = new TH2F("XtaltimeVsAmpEE_RunB", "Crystal In EE Time Vs Amplitude",  100, 0, 4000,100, -25.0, 25.0 );
+TH2F*   XtaltimeVsAmpEB_RunB = new TH2F("XtaltimeVsAmpEB_RunB", "Crystal In EB Time Vs Amplitude",  100, 0, 4000,100, binlow, binhigh );
+TH2F*   XtaltimeVsAmpEE_RunB = new TH2F("XtaltimeVsAmpEE_RunB", "Crystal In EE Time Vs Amplitude",  100, 0, 4000,100, binlow, binhigh );
 //  Time of 1d
-TH1F*  xtaltimeDistEB_RunB = new TH1F("xtaltimeEB_RunB","Crystal Time Distrubution",100, -25, 25);
-TH1F*  xtaltimeDistEE_RunB = new TH1F("xtaltimeEE_RunB","Crystal Time Distrubution",100, -25, 25);
+TH1F*  xtaltimeDistEB_RunB = new TH1F("xtaltimeEB_RunB","Crystal Time Distrubution",100, binlow, binhigh);
+TH1F*  xtaltimeDistEE_RunB = new TH1F("xtaltimeEE_RunB","Crystal Time Distrubution",100, binlow, binhigh);
 
 
 // Xtal time Vs Time Measured EB and EE
 //TH2F*   XtaltimeVsTimeEB = new TH2F("XtaltimeVsTimeEB", "Crystal  In EB Time  Vs Time Measured", 100, 0, 10000000, 100, -25, 25 ); 
 //TH2F*   XtaltimeVsTimeEE = new TH2F("XtaltimeVsTimeEE", "Crystal  In EE Time  Vs Time Measured", 100, 0, 10000000,100, -25, 25 );
 // Xtal time Vs FedId
-TH2F*   XtaltimeVsFedIDEB_RunB = new TH2F("XtaltimeVsFedIDEB_RunB", "Crystal Time[ns] Vs FedId In EB only", 54, 601, 655, 100, -25, 25 );
-TH2F*   XtaltimeVsFedIDEE_RunB = new TH2F("XtaltimeVsFedIDEE_RunB","Crystal Time[ns] Vs FedId In EE Only",  54,  601,  655, 100, -25, 25); 
+TH2F*   XtaltimeVsFedIDEB_RunB = new TH2F("XtaltimeVsFedIDEB_RunB", "Crystal Time[ns] Vs FedId In EB only", 54, 601, 655, 100, binlow, binhigh );
+TH2F*   XtaltimeVsFedIDEE_RunB = new TH2F("XtaltimeVsFedIDEE_RunB","Crystal Time[ns] Vs FedId In EE Only",  54,  601,  655, 100, binlow, binhigh); 
 //Xtal Time Vs Lumi
-TH2F*   XtaltimeVsLumiEB_RunB = new TH2F("XtaltimeVsLumiEB_RunB", "Crystal  In EB Time  Vs Lumi", 100, 0, 4000,100, -25, 25 );
+TH2F*   XtaltimeVsLumiEB_RunB = new TH2F("XtaltimeVsLumiEB_RunB", "Crystal  In EB Time  Vs Lumi", 100, 0, 4000,100, binlow, binhigh );
 // xtak Time Vs Eta EB   
-TH2F*   XtaltimeVsEta_RunB = new TH2F("XtaltimeVsEta_RunB", "Crystal  In EB Time  Vs Eta", 10, -3, 3,100, -25, 25 );
+TH2F*   XtaltimeVsEta_RunB = new TH2F("XtaltimeVsEta_RunB", "Crystal  In EB Time  Vs Eta", 10, -3, 3,100, binlow, binhigh );
 //xtal Time Vs Run Number
-TH2F*   XtaltimeVsRun_RunB = new TH2F("XtaltimeVsRun_RunB", "Crystal  In EB Time  Vs Run Number", 100, 150000, 190000, 100, -25, 25);
+TH2F*   XtaltimeVsRun_RunB = new TH2F("XtaltimeVsRun_RunB", "Crystal  In EB Time  Vs Run Number", 100, 150000, 190000, 100, binlow, binhigh);
 
 
-TH1F* EBP1Dtime_RunB =  new TH1F("EBP1Dtime_RunB","EB-1 Timing [ns]", 100, -25, 25);
+TH1F* EBP1Dtime_RunB =  new TH1F("EBP1Dtime_RunB","EB-1 Timing [ns]", 100, binlow, binhigh);
 
 
-TH1F* EBM1Dtime_RunB =  new TH1F("EBM1Dtime_RunB","EB+1 Timing [ns]", 100, -25, 25);
+TH1F* EBM1Dtime_RunB =  new TH1F("EBM1Dtime_RunB","EB+1 Timing [ns]", 100, binlow, binhigh);
+
+
+
+
+//////////// Fxn To Save Canvas In Directory ///////////////
+
+void SaveCanvasInDir( TProfile2D* mytprof)
+{
+
+  TStyle mystyle;
+
+  mystyle.SetPalette(1,0);
+  mystyle.SetLabelColor(kBlack,"xyz");
+  mystyle.SetTitleColor(kBlack);
+  mystyle.SetLegendBorderSize(0.5);
+  mystyle.SetStatH(0.2);
+  mystyle.SetOptStat(11);
+  TCanvas myCanvas;
+  myCanvas.cd();
+  mytprof->Draw("colztext");
+  std::string filename="LaserTimingShiftRun163291VsRun163333/";
+  filename += mytprof->GetTitle();
+  filename += ".png";
+  myCanvas.Print(filename.c_str());
+	  
+}
+
 
 
 
@@ -241,10 +292,15 @@ void writehist()
  for( int m = 0; m < numEBFed; m++)
    {
 	 CCUTimeShiftEB[m]->GetXaxis()->SetTitle("i#phi");
-	 CCUTimeShiftEB[m]->GetYaxis()->SetTitle("i#phi");
+	 CCUTimeShiftEB[m]->GetYaxis()->SetTitle("i#eta");
 	 CCUTimeShiftEB[m]->Draw("colztext");
 	 CCUTimeShiftEB[m]->Write();
    }
+  CrysTimeShiftEB->GetXaxis()->SetTitle("i#phi");
+  CrysTimeShiftEB->GetYaxis()->SetTitle("i#eta");
+  CrysTimeShiftEB->Draw("colz");
+  CrysTimeShiftEB->Write();
+ 
  //Timing Shift for EE plus
 TDirectory* TimingShiftEEP = savefile->mkdir("TimingShiftFromLaserEEP");
  TimingShiftEEP->cd();
@@ -256,6 +312,12 @@ TDirectory* TimingShiftEEP = savefile->mkdir("TimingShiftFromLaserEEP");
 	 CCUTimeShiftEEP[m]->Write();
    }
 
+  CrysTimeShiftEEP->GetXaxis()->SetTitle("ix");
+  CrysTimeShiftEEP->GetYaxis()->SetTitle("iy");
+  CrysTimeShiftEEP->Draw("colz");
+  CrysTimeShiftEEP->Write();
+ 
+
  // Timing Shift for EE Minus
 TDirectory* TimingShiftEEM = savefile->mkdir("TimingShiftFromLaserEEM");
  TimingShiftEEM->cd();
@@ -265,12 +327,27 @@ TDirectory* TimingShiftEEM = savefile->mkdir("TimingShiftFromLaserEEM");
 	 CCUTimeShiftEEM[m]->GetYaxis()->SetTitle("iy");
 	 CCUTimeShiftEEM[m]->Draw("colztext");
 	 CCUTimeShiftEEM[m]->Write();
-   } 
- TDirectory * TestPlots = savefile->mkdir("LaserTiming");
+   }
+ 
+  CrysTimeShiftEEM->GetXaxis()->SetTitle("ix");
+  CrysTimeShiftEEM->GetYaxis()->SetTitle("iy");
+  CrysTimeShiftEEM->Draw("colz");
+  CrysTimeShiftEEM->Write();
 
+  TDirectory * TestPlots = savefile->mkdir("LaserTiming");
+ 
   TestPlots->cd();
-  XtaltimeVsAmpEB->Write();
-  XtaltimeVsAmpEE->Write();
+ 
+
+ 
+ //****** New Folder to Fill EB CCUs For RunA ******/// 
+TDirectory * CCUInEB_RunA = savefile->mkdir("CCUInEBFedsTime_RunA");
+
+ CCUInEB_RunA->cd();
+
+
+ XtaltimeVsAmpEB->Write();
+ XtaltimeVsAmpEE->Write();
   //  XtaltimeVsTimeEB->Write();
   //  XtaltimeVsTimeEE->Write();
   XtaltimeVsFedIDEB->Write();
@@ -310,18 +387,15 @@ FedAvgTimingEB->Write();
  FedAvgTimingEEM->Draw("colztext");
  FedAvgTimingEEM->Write();
 
-
  
- //****** New Folder to Fill EB CCUs For RunA ******/// 
-TDirectory * CCUInEB_RunA = savefile->mkdir("CCUInEBFedsTime_RunA");
-
- CCUInEB_RunA->cd();
  
 for( int numfed = 0; numfed < numEBFed; numfed++)
 {
 // CCUAvgTimingEBplus[j]->Write();
  CCUAvgTimeEB_RunA[numfed]->GetXaxis()->SetTitle("i#phi");
  CCUAvgTimeEB_RunA[numfed]->GetYaxis()->SetTitle("i#eta");
+ CCUAvgTimeEB_RunA[numfed]->SetMinimum(-50);
+ CCUAvgTimeEB_RunA[numfed]->SetMaximum(50); 
  CCUAvgTimeEB_RunA[numfed]->Draw("colztext");
  CCUAvgTimeEB_RunA[numfed]->Write(); 
  }
@@ -333,16 +407,23 @@ for( int numfed = 0; numfed < numEBFed; numfed++)
 	 // for EE Plus
 	 CCUAvgTimeEEP_RunA[eeSec]->GetXaxis()->SetTitle("ix");
 	 CCUAvgTimeEEP_RunA[eeSec]->GetXaxis()->SetTitle("iy");
+     CCUAvgTimeEEP_RunA[eeSec]->SetMinimum(-50); 	 
+     CCUAvgTimeEEP_RunA[eeSec]->SetMaximum(50); 
 	 CCUAvgTimeEEP_RunA[eeSec]->Draw("colztext");
 	 CCUAvgTimeEEP_RunA[eeSec]->Write();
 
 	 // for EE Minus	 
 	 CCUAvgTimeEEM_RunA[eeSec]->GetXaxis()->SetTitle("ix");
 	 CCUAvgTimeEEM_RunA[eeSec]->GetXaxis()->SetTitle("iy");
+     CCUAvgTimeEEM_RunA[eeSec]->SetMinimum(-50); 	 
+     CCUAvgTimeEEM_RunA[eeSec]->SetMaximum(50);  
 	 CCUAvgTimeEEM_RunA[eeSec]->Draw("colztext");
 	 CCUAvgTimeEEM_RunA[eeSec]->Write();
 	 
    }
+
+
+ 
 TDirectory* CCUInEB_RunB = savefile->mkdir("CCUInEBFedsTime_RunB");
 
  CCUInEB_RunB->cd();
@@ -350,10 +431,12 @@ TDirectory* CCUInEB_RunB = savefile->mkdir("CCUInEBFedsTime_RunB");
  for( int fednum = 0; fednum < numEBFed; fednum++)
   {
 	//	 CCUAvgTimeEB_RunB
-CCUAvgTimeEB_RunB[fednum]->GetXaxis()->SetTitle("i#phi");
-CCUAvgTimeEB_RunB[fednum]->GetYaxis()->SetTitle("i#eta");
-CCUAvgTimeEB_RunB[fednum]->Draw("colztext");
-CCUAvgTimeEB_RunB[fednum]->Write(); 
+	CCUAvgTimeEB_RunB[fednum]->GetXaxis()->SetTitle("i#phi");
+	CCUAvgTimeEB_RunB[fednum]->GetYaxis()->SetTitle("i#eta");
+	CCUAvgTimeEB_RunB[fednum]->SetMinimum(-50);
+    CCUAvgTimeEB_RunB[fednum]->SetMaximum(50);
+    CCUAvgTimeEB_RunB[fednum]->Draw("colztext");
+    CCUAvgTimeEB_RunB[fednum]->Write(); 
 	 
   }
  
@@ -363,12 +446,18 @@ CCUAvgTimeEB_RunB[fednum]->Write();
 	 // for EE Plus
 	 CCUAvgTimeEEP_RunB[eeSec]->GetXaxis()->SetTitle("ix");
 	 CCUAvgTimeEEP_RunB[eeSec]->GetXaxis()->SetTitle("iy");
+     CCUAvgTimeEEP_RunB[eeSec]->SetMinimum(-50); 	 
+     CCUAvgTimeEEP_RunB[eeSec]->SetMaximum(50); 
+	 
 	 CCUAvgTimeEEP_RunB[eeSec]->Draw("colztext");
 	 CCUAvgTimeEEP_RunB[eeSec]->Write();
+	 
 
 	 // for EE Minus	 
 	 CCUAvgTimeEEM_RunB[eeSec]->GetXaxis()->SetTitle("ix");
 	 CCUAvgTimeEEM_RunB[eeSec]->GetXaxis()->SetTitle("iy");
+	 CCUAvgTimeEEM_RunB[eeSec]->SetMinimum(-50); 	 
+     CCUAvgTimeEEM_RunB[eeSec]->SetMaximum(50); 
 	 CCUAvgTimeEEM_RunB[eeSec]->Draw("colztext");
 	 CCUAvgTimeEEM_RunB[eeSec]->Write();	 
    }
@@ -458,9 +547,9 @@ TProfile2D* SubtractTwoTProfile2D( TProfile2D* hprof_runA, TProfile2D* hprof_run
   int nybinsB = hprof_runB->GetNbinsY();
 
   
-  cout <<" Number of Xbins in Run A = " << nxbinsA << " And Number of YBins in Run A = " << nybinsA << endl;
+  //  cout <<" Number of Xbins in Run A = " << nxbinsA << " And Number of YBins in Run A = " << nybinsA << endl;
 
-  cout <<" Number of Xbins in Run B = " << nxbinsB << " And Number of YBins in Run B = " << nybinsB << endl;
+  //  cout <<" Number of Xbins in Run B = " << nxbinsB << " And Number of YBins in Run B = " << nybinsB << endl;
 
   
   // Define New Histogram to hold CCU Time Shift
@@ -482,22 +571,41 @@ TProfile2D* SubtractTwoTProfile2D( TProfile2D* hprof_runA, TProfile2D* hprof_run
 		  float timeA = hprof_runA->GetBinContent(binsA);
 		  float timeB = hprof_runB->GetBinContent(binsB);
 
+		  // get number entries in Each 2D First.
+
+		  int nentriesA =  hprof_runA->GetBinEntries(binsA);
+		  int nentriesB =  hprof_runB->GetBinEntries(binsB);
+		  
+		 
 		  // Time Diff
 		  float timeshift = timeA - timeB;
 
-		  result_hprof->SetBinContent(binsA, timeshift);
-		  result_hprof->SetBinEntries(binsA, 1);
-
+		   // check here for Empty CCUs in A and B and set Time Extra Large.;
+		  if( nentriesA == 0 || nentriesB == 0)
+			{
+			  result_hprof->SetBinContent(binsA, -9999999); // If No entry Set Etra large Time,Plot shows white. 
+			}else
+			{
+			  
+			  result_hprof->SetBinContent(binsA, timeshift);
+			  result_hprof->SetBinEntries(binsA, 1);
+			}
 		  //result_hprof->Fill(ixa, iya, timeshift);
-
+		  
 		  //debug if the right thinsg is being done
-
-		  cout <<" Bins = " << "[" << ixa << "," << iya << "]" <<" and has "<< " timeA = " << timeA << " and timeB = " << timeB << " with time Difference = " << timeshift << endl;
+		  
+		  if((timeshift >=5 || timeshift <=-5) && timeA !=0 && timeB !=0)
+			{
+			  cout <<" CCU With Huge TimeShift Has Bins = " << "[" << ixa << "," << iya << "]" <<" and has "<< " timeA = " << timeA << " and timeB = " << timeB << " with time Difference = " << timeshift << endl;
+			}
 		}
 	}
  }
-  
-  return result_hprof;
+
+  result_hprof->SetMinimum(binlow);
+  result_hprof->SetMaximum(binhigh);
+ 
+   return result_hprof;
   
 } // end of  Trial Subtract
 
@@ -652,7 +760,9 @@ int main(int argc, char ** argv)
 {
     int * wl = NULL, nwl = 0;
     TChain * tx = new TChain("x");
-	   tx->Add("/hdfs/cms/user/norbert/data/Laser/*.root");
+
+		tx->Add("/hdfs/cms/user/norbert/data/Validlaser/*.root");
+		//	tx->Add("/hdfs/cms/user/norbert/data/Laser/*.root"); ///hdfs/cms/user/norbert/data/Validlaser
 	   //	  tx->Add("/hdfs/cms/user/norbert/data/NewLaserData/ntuple_example/*.root");
 	//	tx->Add("/hdfs/cms/user/norbert/data/NewLaserData/cmsecallaser/srv-ecal-laser-13/disk0/ferriff/tree_data/ntuple_example/*.root");
 
@@ -719,7 +829,8 @@ for( int eeMnum = 0; eeMnum < 9; eeMnum++)
     //CCUAvgTimeEB_RunA[hnum] = new TProfile2D(fedhistname.c_str(),fedhistname.c_str(),4,1+hnum*20,1+(hnum+1)*20,17,-85,0);
 
 		// EE Plus
-		//RunA
+		//RunA551
+
 		std::string EESecname = "CCU_Mean_Time_EEPlus";
 		EESecname += ConvertIntToString(eeMnum + 646);
 
@@ -772,7 +883,7 @@ FedAvgTimingEB_RunB = new TProfile2D("FedAvgTimingEB_RunB","CCU Mean Time EB", 3
 
 
  // Ssave Out Put Files  here!
-    savefile = new TFile("EcalLaserTiming_Trial_New_160111Vs160138.root", "recreate");
+    savefile = new TFile("EcalLaserTiming_New_163291Vs163333_March02.root", "recreate");
 
     init_ttree(tx, &x);
     tx->SetBranchStatus("*",0); //disable all branches
@@ -856,12 +967,12 @@ if(x.run == RunB4TS && x.seq == 0)
     CCUAvgTimeEB_RunA[numfed]->Fill(iphi, ieta, Xtaltime); // Fill all EB-FEDs
 	
    
-        XtaltimeVsAmpEB->Fill(x.qmax[0],x.tmax[0]);
+	XtaltimeVsAmpEB->Fill(x.qmax[0],Xtaltime); // Here still has raw time. hmm!
 		//    XtaltimeVsTimeEB->Fill( x.time[0],x.tmax[0]);
 	    XtaltimeVsLumiEB->Fill(x.lumi[0],x.tmax[0]);
 	    XtaltimeVsFedIDEB->Fill(x.fed,(x.tmax[0]-5)*25);
 
-	     xtaltimeDistEB->Fill( x.tmax[0]-5);
+		xtaltimeDistEB->Fill( (x.tmax[0]-5)*25);
 		 FedAvgTimingEB->Fill(x.iy+10,x.ix,(x.tmax[0]-5)*25);  // making some changes here Now!
 
 		 //   Do EE  here!
@@ -928,7 +1039,7 @@ if( numcrys > 75838) break;
   }else // end of choice of run Before TS  and Seq
 
 
-///////****** select run After TS RUN A******///////
+///////****** select run After TS, RUN B******///////
 if(x.run == RunAFTS && x.seq == 0)
   {
 	
@@ -972,13 +1083,13 @@ if(x.run == RunAFTS && x.seq == 0)
 	
 
    
-        XtaltimeVsAmpEB_RunB->Fill(x.qmax[0],x.tmax[0]);
+		 XtaltimeVsAmpEB_RunB->Fill(x.qmax[0],Xtaltime); // OBX time here!
 		//XtaltimeVsTimeEB->Fill( x.time[0],x.tmax[0]);
 	    XtaltimeVsLumiEB_RunB->Fill(x.lumi[0],x.tmax[0]);
 	    XtaltimeVsFedIDEB_RunB->Fill(x.fed,(x.tmax[0]-5)*25);
 
-	     xtaltimeDistEB_RunB->Fill( x.tmax[0]-5);
-         FedAvgTimingEB_RunB->Fill(x.iy+10,x.ix,(x.tmax[0]-5)*25); //  same changes here now!
+		xtaltimeDistEB_RunB->Fill( (x.tmax[0]-5)*25);
+		FedAvgTimingEB_RunB->Fill(x.iy+10,x.ix,(x.tmax[0]-5)*25); //  same changes here now!
 
 		 //   Do EE  here!
  }else{
@@ -1040,38 +1151,62 @@ if( numcrys > 75838) break;
 
 
  
-/// Calculate CCU Time Shift Here!////////
+////// Calculate CCU Time Shift Here!////////
 
- //loop over all hists
+//First for ALL EB and EE
+
+//EB 
+ CrysTimeShiftEB = SubtractTwoTProfile2D(FedAvgTimingEB,  FedAvgTimingEB_RunB);
+ CrysTimeShiftEB ->SetMinimum(lbin);
+ CrysTimeShiftEB->SetMaximum(hbin);
+ SaveCanvasInDir(CrysTimeShiftEB);
+ //EEP
+ CrysTimeShiftEEP = SubtractTwoTProfile2D(FedAvgTimingEEP, FedAvgTimingEEP_RunB);
+ CrysTimeShiftEEP->SetMinimum(lbin);
+ CrysTimeShiftEEP->SetMaximum(hbin);
+ SaveCanvasInDir(CrysTimeShiftEEP);
+	
+ //EEM 
+ CrysTimeShiftEEM = SubtractTwoTProfile2D(FedAvgTimingEEM, FedAvgTimingEEM_RunB);
+ CrysTimeShiftEEM->SetMinimum(lbin);
+ CrysTimeShiftEEM->SetMaximum(hbin);
+ SaveCanvasInDir(CrysTimeShiftEEM);
+
+
+ //loop over all FED TProfile2D
  // EB
    for( int nh = 0; nh < numEBFed; nh++)
 	 {
 	  
-	   
 	   CCUTimeShiftEB[nh]= SubtractTwoTProfile2D(CCUAvgTimeEB_RunA[nh], CCUAvgTimeEB_RunB[nh]);
-	    	   
+	   CCUTimeShiftEB[nh]->SetMinimum(lbin);
+	   CCUTimeShiftEB[nh]->SetMaximum(hbin);
+	   SaveCanvasInDir( CCUTimeShiftEB[nh]);
+	    	// Get CCUId and Time
+	   //	   GetCCUIdAndTimeFromTProfileHist::
+	   //	 	   getCCUId->GetCCUIdandTimeShift(CCUTimeShiftEB[nh], 0);   
 	 }
 
-   // Debug issues
-       int binA = CCUAvgTimeEB_RunA[0]->GetBin(4,17);
-       float binvalueA = CCUAvgTimeEB_RunA[0]->GetBinContent(binA);
-	   int  binEntryA =  CCUAvgTimeEB_RunA[0]->GetBinEntries(binA);
+   //Debug issues
+//        int binA = CCUAvgTimeEB_RunA[0]->GetBin(4,17);
+//        float binvalueA = CCUAvgTimeEB_RunA[0]->GetBinContent(binA);
+// 	   int  binEntryA =  CCUAvgTimeEB_RunA[0]->GetBinEntries(binA);
 
-	   int binB = CCUAvgTimeEB_RunB[0]->GetBin(4,17);
-	   float binvalueB = CCUAvgTimeEB_RunB[0]->GetBinContent(binB);
-	   int  binEntryB =  CCUAvgTimeEB_RunB[0]->GetBinEntries(binB);
+// 	   int binB = CCUAvgTimeEB_RunB[0]->GetBin(4,17);
+// 	   float binvalueB = CCUAvgTimeEB_RunB[0]->GetBinContent(binB);
+// 	   int  binEntryB =  CCUAvgTimeEB_RunB[0]->GetBinEntries(binB);
 
-	   int bind = CCUTimeShiftEB[0]->GetBin(4,17);
-	   float binvalue = CCUTimeShiftEB[0]->GetBinContent(bind);
-	   int  binEntry   =  CCUTimeShiftEB[0]->GetBinEntries(bind);
+// 	   int bind = CCUTimeShiftEB[0]->GetBin(4,17);
+// 	   float binvalue = CCUTimeShiftEB[0]->GetBinContent(bind);
+// 	   int  binEntry   =  CCUTimeShiftEB[0]->GetBinEntries(bind);
 	  
    
 
-   cout << "RunA has Entries=" << binEntryA << " With Time=" <<  binvalueA << endl;
-   cout << "RunB has Entries=" << binEntryB << " With Time=" <<  binvalueB << endl;
+//    cout << "RunA has Entries=" << binEntryA << " With Time=" <<  binvalueA << endl;
+//    cout << "RunB has Entries=" << binEntryB << " With Time=" <<  binvalueB << endl;
 
 
-   cout << "Diff In Run  has Entries=" << binEntry << " With Time=" <<  binvalue << endl;
+//    cout << "Diff In Run  has Entries=" << binEntry << " With Time=" <<  binvalue << endl;
 
    
 
@@ -1079,10 +1214,26 @@ if( numcrys > 75838) break;
    for ( int eenh = 0; eenh < numSC; eenh++)
 	 {
 	   //EE plus
-	   CCUTimeShiftEEP[eenh]= SubtractTwoTProfile2D(CCUAvgTimeEEP_RunA[eenh], CCUAvgTimeEEP_RunB[eenh]); 
+	   CCUTimeShiftEEP[eenh]= SubtractTwoTProfile2D(CCUAvgTimeEEP_RunA[eenh], CCUAvgTimeEEP_RunB[eenh]);
+
+	    	CCUTimeShiftEEP[eenh]->SetMinimum(lbin);
+        	CCUTimeShiftEEP[eenh]->SetMaximum(hbin);
+	    	SaveCanvasInDir(CCUTimeShiftEEP[eenh]);
+//GetCCUId and Time EE+
+			//	GetCCUIdAndTimeFromTProfileHist::
+			//			getCCUId->GetCCUIdandTimeShift(CCUTimeShiftEEP[eenh], 1); 
+	    
 	   //EE Minus   
-	   CCUTimeShiftEEM[eenh]= SubtractTwoTProfile2D(CCUAvgTimeEEP_RunA[eenh], CCUAvgTimeEEP_RunB[eenh]); 
+		CCUTimeShiftEEM[eenh]= SubtractTwoTProfile2D(CCUAvgTimeEEM_RunA[eenh], CCUAvgTimeEEM_RunB[eenh]);
+		
+	    	CCUTimeShiftEEM[eenh]->SetMinimum(lbin);
+        	CCUTimeShiftEEM[eenh]->SetMaximum(hbin);
+		SaveCanvasInDir(CCUTimeShiftEEM[eenh]);
+// Get CCUId and Time EE-
+//		GetCCUIdAndTimeFromTProfileHist::
+//		getCCUId->GetCCUIdandTimeShift(CCUTimeShiftEEM[eenh], -1); 
 	 }
+
    
     cout << " Write Histograms" << endl;
     writehist();
