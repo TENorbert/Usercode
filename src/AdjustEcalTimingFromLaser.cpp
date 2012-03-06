@@ -286,25 +286,25 @@ void SaveCanvasInDir( TProfile2D* mytprof)
   mystyle.SetStatH(0.2);
   mystyle.SetOptStat(11);
 // Sets Histogram Title at Center
-  mystyle.SetTitleX(0.5);
-  mystyle.SetTitleAlign(23);
+//  mystyle.SetTitleX(0.5);
+ // mystyle.SetTitleAlign(23);
   TCanvas myCanvas;
   myCanvas.cd();
 
 // make Empty Bins appear white.
-int nxbins = mytprof->GetNbinsX();
-int nybins = mytprof->GetNbinsY();
+//int nxbins = mytprof->GetNbinsX();
+//int nybins = mytprof->GetNbinsY();
 
 // Loop over bins and set empty bins to show white.
-for(int ii=0; ii<= nybins; ii++)
-{
-  for( int jj=0; jj <= nxbins; jj++)
-     {
-       int bin = mytprof->GetBin(ii,jj);
-       int nentry = mytprof->GetBinEntries(bin);
-if(nentry == 0){ mytprof->SetBinContent(bin, -999999);};
-      }
-}
+//for(int ii=0; ii<= nybins; ii++)
+//{
+//  for( int jj=0; jj <= nxbins; jj++)
+ //    {
+ //      int bin = mytprof->GetBin(ii,jj);
+ //      int nentry = mytprof->GetBinEntries(bin);
+//if(nentry == 0){ mytprof->SetBinContent(bin, -999999);};
+ //     }
+//}
   mytprof->Draw("colztext"); // Where text happens.
   std::string filename="LaserTimingShiftRun163291VsRun163333/";
   filename += mytprof->GetTitle();
@@ -331,14 +331,17 @@ void GetCCUIdandTimeshiftTProfileHist(TProfile2D* myprof,  int iz)
   
 
   //EB    In EB CCU == Trigger Tower
-  std::vector<EcalTrigTowerDetId> CCUIdVecEB;
+//  std::vector<EcalTrigTowerDetId> CCUIdVecEB;
+  std::vector<int> CCUIdVecEB;
   std::vector<float> CCUIdTimeEB;
 
   // EE Plus  // CCU seen as SuperCrystal in EE..Not as Trigger Tower As Normally done!
-  std::vector<EcalScDetId> CCUIdVecEEP;
+//  std::vector<EcalScDetId> CCUIdVecEEP;
+  std::vector<int> CCUIdVecEEP;
   std::vector<float> CCUIdTimeEEP;
   //EE Minus
-  std::vector<EcalScDetId> CCUIdVecEEM;
+//  std::vector<EcalScDetId> CCUIdVecEEM;
+  std::vector<int> CCUIdVecEEM;
   std::vector<float> CCUIdTimeEEM;
   
 
@@ -349,22 +352,25 @@ void GetCCUIdandTimeshiftTProfileHist(TProfile2D* myprof,  int iz)
   
   //EE
   EEDetId eedetIdm;
-  EEDetId eedetIdp;  
+ // EEDetId eedetIdp;  
   //EE SC
-  EcalScDetId CCUIdM;
-  EcalScDetId CCUIdP;
+//  EcalScDetId 
+
+ int CCUIdEB = 0; // initialise Variables for safety
+ int CCUIdEE = 0;
+//  EcalScDetId CCUIdP;
 
 // create Electronics Mapping object
- EcalElectronicsMapping  elecIdmapping;
+// EcalElectronicsMapping  elecIdmapping;
   
 
   // Read CCU Id and Timeshift into file 
   if (iz == 0) 
 	{
 
-	  for( int ny =0; ny <= nybins; ny++)
+	  for( int ny = 1; ny < nybins+1; ny++)
 		{
-		  for(int nx = 0; nx <= nxbins; nx++)
+		  for(int nx = 1; nx <  nxbins+1; nx++)
 			{
 			  int bin = myprof->GetBin(ny,nx);
 
@@ -376,32 +382,50 @@ void GetCCUIdandTimeshiftTProfileHist(TProfile2D* myprof,  int iz)
 			  if( nentries == 0){ tshift = 0;} else { tshift = myprof->GetBinContent(bin);};
 
 			  // Hopefully these are Phi and eta Values
-			  int ieta = myprof->GetBinLowEdge(nx);
-			  int iphi = myprof->GetBinLowEdge(ny);
+			  int ieta = myprof->GetYaxis()->GetBinLowEdge(ny);
+			  int iphi = myprof->GetXaxis()->GetBinLowEdge(nx);
 
-		
+		cout << "Bin " << bin << " has entries " << nentries << " and bin number nx, ny = " << nx << ", " << ny << " and ieta, iphi = " << ieta << ", " << iphi << endl;
 			  // if(EcalTrigTowerDetId::validDetId(iz,eb,nx,ny))
 			  
 			  //  ttId = EcalTrigTowerDetId(iz,eb,nx,ny);
-			  //	  EcalTrigTowerDetId ttId(0,1,ieta,iphi,0);  //subdet ==1 and mode ==0 for EcalBarel
+			  //  EcalTrigTowerDetId ttId(0,1,ieta,iphi,0);  //subdet ==1 and mode ==0 for EcalBarel
 
+// skip Bad Ieta nd Iphi Values:
+if(iphi < 1 || iphi > 360 || ieta < -85 || ieta > 85 ) continue;
 			  // Create DetId
-
-			  EBDetId ebdetId(ieta,iphi);
-
+// check for negative phi bins
+if(iphi < 1 || iphi > 360 || ieta < -85 || ieta > 85 ) { cout << "arrrh! Bad Bin with wrong iphi has iphi = " << iphi << "and  ieta = " << ieta << ", Its bin is nx, ny = " << nx << ", " << ny << " and Bin is = " << bin << " from hist " << myprof->GetTitle() << endl; }
+  //           }else  { 
+		       EBDetId ebdetId(ieta,iphi);
+    //                }
 			  //Continue on bad DetId
 			  if(!ebdetId.validDetId(ieta,iphi)) continue;
+                          // remove ieta=iphi=0 xtal
+                          if(ebdetId.ieta()==0 && ebdetId.iphi()==0) continue;
+                          // remove ieta > 85 or ieta < -85
+                          if(ebdetId.ieta() < -85 || ebdetId.ieta() > 85) continue;  
+                          // remove iphi > 0 or iphi < 361
+                          if(ebdetId.iphi()  < 1 || ebdetId.iphi() > 360 ) continue;       
 
+                           // Debuggin issues
 			  int eta = ebdetId.ietaSM();
 			  int phi = ebdetId.iphiSM();
 			  // Check if EBDetId is Valid
 			  if(ebdetId.validDetId(ieta, iphi)){
 				cout << " The EBDetID is " << ebdetId <<" has eta: "<< eta << " and Has Phi: "<< phi << endl;};
 			  // Use DetId to Get Electronics ID
-			  const EcalElectronicsId eid = elecIdmapping.getElectronicsId(ebdetId);
+//			  const EcalElectronicsId eid = elecIdmapping.getElectronicsId(ebdetId);
 			  //Numbers::map->getElectronicsId(ebdetId);
 			  // From electronics Id Get CCUId
-			  int  CCUId = eid.towerId();
+//			  int  CCUId = eid.towerId();
+
+
+                           // Get SM?
+                          int iSM = Numbers::iSM(ebdetId);
+                         // which TT/SC?
+                          CCUIdEB = Numbers::iSC(iSM,EcalBarrel,ebdetId.ietaSM(),ebdetId.iphiSM());
+
 
 // 			  // Make TT Id
 // 			  EcalTrigTowerDetId ttId(CCUId);
@@ -415,7 +439,7 @@ void GetCCUIdandTimeshiftTProfileHist(TProfile2D* myprof,  int iz)
 					//			  if(ttId.validDetId(0,1,ieta,iphi))
 					//				{
 					//					CCUIdVecEB.push_back(ttId);
-					CCUIdVecEB.push_back(CCUId);	
+					CCUIdVecEB.push_back(CCUIdEB);	
 					CCUIdTimeEB.push_back(tshift);
 				  } else continue; // continue on Invalid detId
 			}			 
@@ -424,13 +448,13 @@ void GetCCUIdandTimeshiftTProfileHist(TProfile2D* myprof,  int iz)
 		}
 	  
 	  
-	}else if (iz == -1)
+	}else if (fabs(iz) == 1)
 	{
 	  
-	  for( int ny =0; ny <= nybins; ny++)
-    	{
-		  for(int nx = 0; nx <= nxbins; nx++)
-	     	{
+	  for( int ny =1; ny < nybins+1; ny++)
+    	      {
+		  for(int nx = 1; nx < nxbins+1; nx++)
+	     	       {
 			  
 			  int bin = myprof->GetBin(ny,nx);
 			  
@@ -440,20 +464,32 @@ void GetCCUIdandTimeshiftTProfileHist(TProfile2D* myprof,  int iz)
 
 			  // Set timing shift for CCUs with no entries == 0
 			  if( nentries == 0){ tshift = 0;} else { tshift = myprof->GetBinContent(bin);};
-			  int ix = myprof->GetBinLowEdge(nx);
-			  int iy = myprof->GetBinLowEdge(ny);
+			  int ix = myprof->GetXaxis()->GetBinLowEdge(nx);
+			  int iy = myprof->GetYaxis()->GetBinLowEdge(ny);
 
-			  // Make EEDetID
-			  EEDetId eedetIdm(ix,iy,-1,0);
 
+// skip Bad ix and iy values:
+if(ix < 1 || ix > 100 || iy < 1 || iy > 100) continue;
+// check for negative ix and iy bins
+if(ix < 1 || ix > 100 || iy < 1 || iy > 100) { cout << "arrrh! Bad Bin with wrong ix has iy = " << iy << "and  ix = " << ix << ", Its bin is nx, ny = " << nx << ", " << ny << " and Bin is = " << bin << " from hist " << myprof->GetTitle() << endl;}
+//             }else  { 
+		         // Make EEDetID
+			  EEDetId eedetIdm(ix,iy,iz,0);
+ //                   }
 			  //Continue on bad DetId
-			  if(!eedetIdm.validDetId(ix,iy,-1)) continue;
-
+		  if(!eedetIdm.validDetId(ix,iy,iz)) continue;
+                   // skip crys with ix=iy=0
+                  if(eedetIdm.ix()==0 && eedetIdm.iy()==0) continue;
 			   // if(EcalScDetId::validDetId(nx,ny,iz))
 			   // CCUIdM = EcalScDetId(nx,ee,ny,iz);
 			  
 			  // Construct Super Cryst Id from detId
-			  EcalScDetId CCUIdM(eedetIdm); 
+//			  EcalScDetId CCUIdM(eedetIdm); 
+
+        // which SM?
+        int iSMee = Numbers::iSM(eedetIdm);
+        // which TT/SC?
+          CCUIdEE = Numbers::iSC(iSMee,EcalEndcap,eedetIdm.ix(),eedetIdm.iy());
 //  = Numbers::getEcalScDetId(eedetIdm );
 			  
 			  //Get SM Id
@@ -461,67 +497,76 @@ void GetCCUIdandTimeshiftTProfileHist(TProfile2D* myprof,  int iz)
 			  
 			  // Now check if SC Id is valid
 //			  if(Numbers::validEESc(eeSM,ix, iy))
-			  if(eedetIdm.validDetId(ix,iy,-1))
+			  if(eedetIdm.validDetId(ix,iy,iz))
 				{
 				  //	   EcalScDetId	 CCUIdM(ieta,iphi,iz); 
 				  //			   if(CCUIdM.validDetId(ieta,iphi,iz))
 				  //				 {
-				  CCUIdVecEEM.push_back(CCUIdM);
+
+                                  if ( iz == -1){
+				  CCUIdVecEEM.push_back(CCUIdEE);
 				  CCUIdTimeEEM.push_back(tshift);
-				  
-				}else continue; // continue of Invalid DetId		 
-			}
+		                                } else {
+                                  CCUIdVecEEP.push_back(CCUIdEE);
+				  CCUIdTimeEEP.push_back(tshift); // fill CCU Timing shift.
+
+                                                       }		  
+ 				}else continue; // skip Invalid DetId		 
+			} 
 		 
 		}
 	   
 	   
-	}else if(iz == 1)
-	{
+} // end of filling vecs
+
+// kill this part b/c its repetition
+//else if(iz == 1)
+//	{
   	  //  Loop over XYbins
-	  for( int ny =0; ny <= nybins; ny++)
-		{
-		  for(int nx = 0; nx <= nxbins; nx++)
-			{
-			  int bin = myprof->GetBin(ny,nx);
-			  //float timeshift = myprof->GetBinContent(bin);
-
-			  
-			  int nentries = myprof->GetBinEntries(bin);
-
-			  int tshift = 0; // initialise the time to zero
-
-			  // Set timing shift for CCUs with no entries == 0
-			  if( nentries == 0){ tshift = 0;} else { tshift = myprof->GetBinContent(bin);};
-			  int ix = myprof->GetBinLowEdge(nx);
-			  int iy = myprof->GetBinLowEdge(ny);
-
-			  	  // Make EEDetID
-			  EEDetId eedetIdp(ix,iy,1,0);
-			   // if(EcalScDetId::validDetId(nx,ny,iz))
-			   // CCUIdM = EcalScDetId(nx,ee,ny,iz);
-
-			  	  //Continue on bad DetId
-			  if(!eedetIdp.validDetId(ix,iy,1)) continue;
-
-			  
-			  // Construc Super Cryst Id from detId
-			  EcalScDetId CCUIdP(eedetIdp); 
-			  // Numbers::getEcalScDetId(eedetIdp);
-			  
-			  //Get SM Id
-		//	  unsigned eeSM =  Numbers::iSM(CCUIdP);
-			  
-			  // Now check if SC Id is valid
+//	  for( int ny =0; ny <= nybins; ny++)
+//		{
+//		  for(int nx = 0; nx <= nxbins; nx++)
+//			{
+//			  int bin = myprof->GetBin(ny,nx);
+//			  //float timeshift = myprof->GetBinContent(bin);
+//
+//			  
+//			  int nentries = myprof->GetBinEntries(bin);
+//
+//			  int tshift = 0; // initialise the time to zero
+//
+//			  // Set timing shift for CCUs with no entries == 0
+//			  if( nentries == 0){ tshift = 0;} else { tshift = myprof->GetBinContent(bin);};
+//			  int ix = myprof->GetBinLowEdge(nx);
+//			  int iy = myprof->GetBinLowEdge(ny);
+//
+//			  	  // Make EEDetID
+//			  EEDetId eedetIdp(ix,iy,1,0);
+//			   // if(EcalScDetId::validDetId(nx,ny,iz))
+//			   // CCUIdM = EcalScDetId(nx,ee,ny,iz);
+//
+//			  	  //Continue on bad DetId
+//			  if(!eedetIdp.validDetId(ix,iy,1)) continue;
+//
+//			  
+//			  // Construc Super Cryst Id from detId
+//			  EcalScDetId CCUIdP(eedetIdp); 
+//			  // Numbers::getEcalScDetId(eedetIdp);
+//			  
+//			  //Get SM Id
+//		//	  unsigned eeSM =  Numbers::iSM(CCUIdP);
+//			  
+//			  // Now check if SC Id is valid
 //			  if(Numbers::validEESc( eeSM,ix,iy))
-			  if(eedetIdp.validDetId(ix,iy,1))
-				{		
-				  CCUIdVecEEP.push_back(CCUIdP);
-				  CCUIdTimeEEP.push_back(tshift); // fill CCU Timing shift.
-				}else continue ; // continue of Invalid detId
-			}			 
+//			  if(eedetIdp.validDetId(ix,iy,1))
+//				{		
+//				  CCUIdVecEEP.push_back(CCUIdP);
+//				  CCUIdTimeEEP.push_back(tshift); // fill CCU Timing shift.
+//				}else continue ; // continue of Invalid detId
+//			}			 
 		  
-		}
-	} // end of EE Plus
+//		}
+//	} // end of EE Plus
   
 
   if(CCUIdeb.is_open()){ cout << "CCUIdEB File is open write in it" <<endl;}
@@ -553,7 +598,7 @@ void GetCCUIdandTimeshiftTProfileHist(TProfile2D* myprof,  int iz)
 	{
 	  for( unsigned ii = 0; ii <= CCUIdVecEEM.size(); ii++)
 		{
-		  CCUIdeem << CCUIdVecEEM[ii] << "Has TimeShiftOf " << CCUIdTimeEEM[ii] <<"(ns)"<< "\n";
+		  CCUIdeem << CCUIdVecEEM[ii] << "Has TimeShift Of " << CCUIdTimeEEM[ii] <<"(ns)"<< "\n";
 		}
 	}
 
@@ -1609,13 +1654,18 @@ int main(int argc, char ** argv)
 	  }
 	
 	
+// Add function to Map TimeShift to CCUId  Here!
+GetCCUIdandTimeshiftTProfileHist(ccutshiftEB, 0);
+GetCCUIdandTimeshiftTProfileHist(ccutshiftEEP, 1);
+GetCCUIdandTimeshiftTProfileHist(ccutshiftEEM, -1);
+
     cout << " Write Histograms" << endl;
     writehist();
 	
     savefile->Close();
 	
 	
-	// Add function to Map TimeShift to CCUId  Here!
+	
 
 	
     return 0;
