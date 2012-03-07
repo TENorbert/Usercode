@@ -43,8 +43,8 @@
 #define ETA_MAX   +3.
 
 
-#define RunB4TS 163291 //163297//163291 //163332 //162765 //161020//161018//160111 //176455 //159218 //175573  //178854 //178731  // 162518 //160147    // 176652  // 160138    // 160133       // 160111 // 159784 //175832  // 175354 //159784 //1611175
-#define RunAFTS 163333 //163483 //163333 //163869 //163078//162765 //162764 //160138 //177727 //160006 //177930 //178241
+#define RunB4TS 160111 // 163291 //163297//163291 //163332 //162765 //161020//161018//160111 //176455 //159218 //175573  //178854 //178731  // 162518 //160147    // 176652  // 160138    // 160133       // 160111 // 159784 //175832  // 175354 //159784 //1611175
+#define RunAFTS 160138 //163333 //163483 //163333 //163869 //163078//162765 //162764 //160138 //177727 //160006 //177930 //178241
 
 
 // defineDirectoryname
@@ -282,9 +282,9 @@ void SaveCanvasInDir( TProfile2D* mytprof)
   mystyle.SetPalette(1,0);
   mystyle.SetLabelColor(kBlack,"xyz");
   mystyle.SetTitleColor(kBlack);
-  mystyle.SetLegendBorderSize(0.5);
+  mystyle.SetLegendBorderSize(0.2);
   mystyle.SetStatH(0.2);
-  mystyle.SetOptStat(11);
+  mystyle.SetOptStat(1);
 // Sets Histogram Title at Center
 //  mystyle.SetTitleX(0.5);
  // mystyle.SetTitleAlign(23);
@@ -306,7 +306,7 @@ void SaveCanvasInDir( TProfile2D* mytprof)
  //     }
 //}
   mytprof->Draw("colztext"); // Where text happens.
-  std::string filename="LaserTimingShiftRun163291VsRun163333/";
+  std::string filename="LaserTimingShiftRun160111VsRun160138/";
   filename += mytprof->GetTitle();
   filename += ".png";
   myCanvas.Print(filename.c_str());
@@ -368,11 +368,11 @@ void GetCCUIdandTimeshiftTProfileHist(TProfile2D* myprof,  int iz)
   if (iz == 0) 
 	{
 
-	  for( int ny = 1; ny < nybins+1; ny++)
+	  for( int nx = 1; nx < nxbins+1; nx++)   // iphi bin
 		{
-		  for(int nx = 1; nx <  nxbins+1; nx++)
+		  for(int ny = 1; ny <  nybins+1; ny++)  // ieta bin
 			{
-			  int bin = myprof->GetBin(ny,nx);
+			  int bin = myprof->GetBin(nx,ny);
 
  			  int nentries = myprof->GetBinEntries(bin);
 
@@ -382,38 +382,58 @@ void GetCCUIdandTimeshiftTProfileHist(TProfile2D* myprof,  int iz)
 			  if( nentries == 0){ tshift = 0;} else { tshift = myprof->GetBinContent(bin);};
 
 			  // Hopefully these are Phi and eta Values
-			  int ieta = myprof->GetYaxis()->GetBinLowEdge(ny);
-			  int iphi = myprof->GetXaxis()->GetBinLowEdge(nx);
 
-		cout << "Bin " << bin << " has entries " << nentries << " and bin number nx, ny = " << nx << ", " << ny << " and ieta, iphi = " << ieta << ", " << iphi << endl;
+
+			  // @ la SIC
+			  int ietaAbs = (ny < 18) ? 18 - ny : ny - 17;
+			  int iPhi    = nx;
+			  int zside   = (ny < 18)? -1 : 1;
+			  int Ieta    = zside*(ietaAbs*5 -2);
+			  int Iphi    =  iPhi*5 - 2;
+			  
+			  int ieta = myprof->GetYaxis()->GetBinLowEdge(ny);  // Need to do some work here!
+			 
+			  //  int Ieta = ieta; //   zside*ieta;
+			  int iphi = myprof->GetXaxis()->GetBinLowEdge(nx);
+		
+
+		cout << "Gloobal Bin " << bin << " has entries " << nentries << " and bin number nx, ny = " << nx << ", " << ny << "\t and ieta, iphi = " << ieta << ", " << iphi << endl;
 			  // if(EcalTrigTowerDetId::validDetId(iz,eb,nx,ny))
 			  
 			  //  ttId = EcalTrigTowerDetId(iz,eb,nx,ny);
 			  //  EcalTrigTowerDetId ttId(0,1,ieta,iphi,0);  //subdet ==1 and mode ==0 for EcalBarel
 
 // skip Bad Ieta nd Iphi Values:
-if(iphi < 1 || iphi > 360 || ieta < -85 || ieta > 85 ) continue;
-			  // Create DetId
+if(Iphi < 1 || Iphi > 360 || Ieta < -85 || Ieta > 85 ) continue;
+			 
 // check for negative phi bins
-if(iphi < 1 || iphi > 360 || ieta < -85 || ieta > 85 ) { cout << "arrrh! Bad Bin with wrong iphi has iphi = " << iphi << "and  ieta = " << ieta << ", Its bin is nx, ny = " << nx << ", " << ny << " and Bin is = " << bin << " from hist " << myprof->GetTitle() << endl; }
-  //           }else  { 
-		       EBDetId ebdetId(ieta,iphi);
-    //                }
-			  //Continue on bad DetId
-			  if(!ebdetId.validDetId(ieta,iphi)) continue;
-                          // remove ieta=iphi=0 xtal
-                          if(ebdetId.ieta()==0 && ebdetId.iphi()==0) continue;
+//if(iphi < 1 || iphi > 360 || ieta < -85 || ieta > 85 ) { cout << "arrrh! Bad Bin with wrong iphi has iphi = " << iphi << "and  ieta = " << ieta << ", Its bin is nx, ny = " << nx << ", " << ny << " and Bin is = " << bin << " from hist " << myprof->GetTitle() << endl; }
+                    // first check if DetId is valid and skip if invalid
+
+  //                   EBDetId::validDetId(ieta,iphi);
+ if( !EBDetId::validDetId(Ieta,Iphi) ) { std::cout << "invalid EBdetID ieta: " << Ieta << "\t iphi: " << Iphi << std::endl;  continue; }
+ else{ std::cout << "VALID EBdetID ieta: " << Ieta << "\t iphi: " << Iphi << std::endl; }
+
+ // if ((ieta== 1 || iphi==1)){std::cout << " why?  ieta ==1 and iph ==1 is messed up" << std::endl;continue;}
+ //  else {
+ 
+                            // Create DetId
+		              EBDetId ebdetId(Ieta,Iphi);
+					  //      }
+                        // remove ieta=iphi=0 xtal
+                       //   if(ebdetId.ieta()==0 && ebdetId.iphi()==0) continue;
                           // remove ieta > 85 or ieta < -85
-                          if(ebdetId.ieta() < -85 || ebdetId.ieta() > 85) continue;  
+                       //   if(ebdetId.ieta() < -85 || ebdetId.ieta() > 85) continue;  
                           // remove iphi > 0 or iphi < 361
-                          if(ebdetId.iphi()  < 1 || ebdetId.iphi() > 360 ) continue;       
+                       //   if(ebdetId.iphi()  < 1 || ebdetId.iphi() > 360 ) continue;       
 
                            // Debuggin issues
-			  int eta = ebdetId.ietaSM();
-			  int phi = ebdetId.iphiSM();
+	//		  int eta = ebdetId.ietaSM();
+	//		  int phi = ebdetId.iphiSM();
+
 			  // Check if EBDetId is Valid
-			  if(ebdetId.validDetId(ieta, iphi)){
-				cout << " The EBDetID is " << ebdetId <<" has eta: "<< eta << " and Has Phi: "<< phi << endl;};
+//			  if(ebdetId.validDetId(Ieta, Iphi)){
+	//			cout << " The EBDetID is " << ebdetId <<" has eta: "<< eta << " and Has Phi: "<< phi << endl;};
 			  // Use DetId to Get Electronics ID
 //			  const EcalElectronicsId eid = elecIdmapping.getElectronicsId(ebdetId);
 			  //Numbers::map->getElectronicsId(ebdetId);
@@ -434,14 +454,14 @@ if(iphi < 1 || iphi > 360 || ieta < -85 || ieta > 85 ) { cout << "arrrh! Bad Bin
 // 			  unsigned iSM = Numbers::SM(ttId)
              
 				//Check if ebdetId is valid. But I really have to check if CCUId is Valid though. sighhhh!
-				if(ebdetId.validDetId(ieta,iphi))
-				  {				 
+//				if(ebdetId.validDetId(Ieta,Iphi))
+//				  {				 
 					//			  if(ttId.validDetId(0,1,ieta,iphi))
 					//				{
 					//					CCUIdVecEB.push_back(ttId);
 					CCUIdVecEB.push_back(CCUIdEB);	
 					CCUIdTimeEB.push_back(tshift);
-				  } else continue; // continue on Invalid detId
+//				  } else continue; // continue on Invalid detId
 			}			 
 		  
 		  
@@ -471,15 +491,22 @@ if(iphi < 1 || iphi > 360 || ieta < -85 || ieta > 85 ) { cout << "arrrh! Bad Bin
 // skip Bad ix and iy values:
 if(ix < 1 || ix > 100 || iy < 1 || iy > 100) continue;
 // check for negative ix and iy bins
-if(ix < 1 || ix > 100 || iy < 1 || iy > 100) { cout << "arrrh! Bad Bin with wrong ix has iy = " << iy << "and  ix = " << ix << ", Its bin is nx, ny = " << nx << ", " << ny << " and Bin is = " << bin << " from hist " << myprof->GetTitle() << endl;}
-//             }else  { 
+//if(ix < 1 || ix > 100 || iy < 1 || iy > 100) { cout << "arrrh! Bad Bin with wrong ix has iy = " << iy << "and  ix = " << ix << ", Its bin is nx, ny = " << nx << ", " << ny << " and Bin is = " << bin << " from hist " << myprof->GetTitle() << endl;}
+
+
+                            //   EEDetId.validDetId(ix,iy,iz);
+if( !EEDetId::validDetId(ix,iy,iz) ) { std::cout << "invalid EEdetID ix: " << ix << "\t iy: " << iy << std::endl;  continue; }
+ else{ std::cout << "VALID EEdetID ix: " << ix << "\t iy: " << iy << std::endl; }
+
+
+
 		         // Make EEDetID
 			  EEDetId eedetIdm(ix,iy,iz,0);
  //                   }
 			  //Continue on bad DetId
-		  if(!eedetIdm.validDetId(ix,iy,iz)) continue;
+//		  if(!eedetIdm.validDetId(ix,iy,iz)) continue;
                    // skip crys with ix=iy=0
-                  if(eedetIdm.ix()==0 && eedetIdm.iy()==0) continue;
+ //                 if(eedetIdm.ix()==0 && eedetIdm.iy()==0) continue;
 			   // if(EcalScDetId::validDetId(nx,ny,iz))
 			   // CCUIdM = EcalScDetId(nx,ee,ny,iz);
 			  
@@ -497,8 +524,8 @@ if(ix < 1 || ix > 100 || iy < 1 || iy > 100) { cout << "arrrh! Bad Bin with wron
 			  
 			  // Now check if SC Id is valid
 //			  if(Numbers::validEESc(eeSM,ix, iy))
-			  if(eedetIdm.validDetId(ix,iy,iz))
-				{
+//			  if(eedetIdm.validDetId(ix,iy,iz))
+//				{
 				  //	   EcalScDetId	 CCUIdM(ieta,iphi,iz); 
 				  //			   if(CCUIdM.validDetId(ieta,iphi,iz))
 				  //				 {
@@ -511,7 +538,7 @@ if(ix < 1 || ix > 100 || iy < 1 || iy > 100) { cout << "arrrh! Bad Bin with wron
 				  CCUIdTimeEEP.push_back(tshift); // fill CCU Timing shift.
 
                                                        }		  
- 				}else continue; // skip Invalid DetId		 
+ //				}else continue; // skip Invalid DetId		 
 			} 
 		 
 		}
@@ -1292,7 +1319,7 @@ int main(int argc, char ** argv)
 
 
  // Ssave Out Put Files  here!
-    savefile = new TFile("EcalLaserTiming_New_163291Vs163333_March02.root", "recreate");
+    savefile = new TFile("EcalLaserTiming_March06_160111Vs160138_March06.root", "recreate");
 
     init_ttree(tx, &x);
     tx->SetBranchStatus("*",0); //disable all branches
@@ -1599,7 +1626,8 @@ int main(int argc, char ** argv)
 		CCUTimeShiftEB[nh]->SetMinimum(lbin);
 		CCUTimeShiftEB[nh]->SetMaximum(hbin);
 		// Get CCUId and Time
-		//GetCCUIdandTimeshiftTProfileHist(CCUTimeShiftEB[nh], 0);
+		//		  GetCCUIdandTimeshiftTProfileHist(CCUTimeShiftEB[nh], 0);
+		// GetCCUIdandTimeshiftTProfileHist(ccutshiftEB, 0);
 		//	   GetCCUIdAndTimeFromTProfileHist::
 		//	   getCCUId(GetCCUIdandTimeShift(CCUTimeShiftEB[nh], 0));
 		
@@ -1637,7 +1665,7 @@ int main(int argc, char ** argv)
 		CCUTimeShiftEEP[eenh]->SetMinimum(lbin);
 		CCUTimeShiftEEP[eenh]->SetMaximum(hbin);
 		//GetCCUId and Time EE+
-		//	    GetCCUIdandTimeshiftTProfileHist(CCUTimeShiftEEP[eenh], 1);
+		//	   GetCCUIdandTimeshiftTProfileHist(CCUTimeShiftEEP[eenh], 1);
 		//	GetCCUIdAndTimeFromTProfileHist::
 		// getCCUId(GetCCUIdandTimeShift(CCUTimeShiftEEP[eenh], 1)); 
 		SaveCanvasInDir(CCUTimeShiftEEP[eenh]);	    
@@ -1648,7 +1676,7 @@ int main(int argc, char ** argv)
 		CCUTimeShiftEEM[eenh]->SetMaximum(hbin);
 		
 		// Get CCUId and Time EE-  //	   getCCUId.
-		//		GetCCUIdandTimeshiftTProfileHist(CCUTimeShiftEEM[eenh], -1);
+		//	GetCCUIdandTimeshiftTProfileHist(CCUTimeShiftEEM[eenh], -1);
 		 //		 getCCUId.GetCCUIdandTimeShift(CCUTimeShiftEEM[eenh], -1);
 		SaveCanvasInDir(CCUTimeShiftEEM[eenh]);
 	  }
@@ -1656,8 +1684,8 @@ int main(int argc, char ** argv)
 	
 // Add function to Map TimeShift to CCUId  Here!
 GetCCUIdandTimeshiftTProfileHist(ccutshiftEB, 0);
-GetCCUIdandTimeshiftTProfileHist(ccutshiftEEP, 1);
-GetCCUIdandTimeshiftTProfileHist(ccutshiftEEM, -1);
+//GetCCUIdandTimeshiftTProfileHist(ccutshiftEEP, 1);
+//GetCCUIdandTimeshiftTProfileHist(ccutshiftEEM, -1);
 
     cout << " Write Histograms" << endl;
     writehist();
