@@ -13,7 +13,7 @@
 //
 // Original Author:  Tambe_Ebai_Norber_+_Giovanni_(UMN) 
 //         Created:  Fri Mar  9 14:33:49 CET 2012
-// $Id$
+// $Id: AdjustEcalTimingFromLaser.cc,v 1.1 2012/03/12 18:13:52 franzoni Exp $
 //
 //
 
@@ -243,18 +243,19 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
   Numbers::initGeometry(iSetup,true);
 
   // define which laser wavelength is being considered   
-  const int NWL=NWLtmp;
-  const int maxNumCCUInFed = EcalTrigTowerDetId::kEBTowersPerSM;
-  const int mxNumXtalInCCU = 25;
+  // const int NWL=NWLtmp;
+  // const int maxNumCCUInFed = EcalTrigTowerDetId::kEBTowersPerSM;
+  // const int mxNumXtalInCCU = 25;
   const int numSC = 9;
   
   ntu_xtals x;
 
-  const int ebwl[] = { 440, 800 };
-  const int eewl[] = { 440, 455, 617 };
+  // const int ebwl[] = { 440, 800 };
+  // const int eewl[] = { 440, 455, 617 };
   
   
-  int * wl = NULL, nwl = 0;
+  // int * wl = NULL, nwl = 0;
+  int* nwl= 0;
   //TChain * tx = new TChain("x");
   tx = new TChain("x");
   dirInPutFilesname += std::string("*.root");
