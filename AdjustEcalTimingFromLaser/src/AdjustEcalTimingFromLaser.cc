@@ -13,7 +13,7 @@
 //
 // Original Author:  Tambe_Ebai_Norber_+_Giovanni_(UMN) 
 //         Created:  Fri Mar  9 14:33:49 CET 2012
-// $Id: AdjustEcalTimingFromLaser.cc,v 1.1 2012/03/12 18:13:52 franzoni Exp $
+// $Id: AdjustEcalTimingFromLaser.cc,v 1.2 2012/03/12 18:36:54 franzoni Exp $
 //
 //
 
@@ -255,7 +255,7 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
   
   
   // int * wl = NULL, nwl = 0;
-  int* nwl= 0;
+  int nwl= 0;
   //TChain * tx = new TChain("x");
   tx = new TChain("x");
   dirInPutFilesname += std::string("*.root");
