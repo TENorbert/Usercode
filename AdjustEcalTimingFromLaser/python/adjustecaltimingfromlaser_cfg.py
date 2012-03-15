@@ -24,18 +24,20 @@ process.load("Configuration.StandardSequences.Geometry_cff")
 process.demo = cms.EDAnalyzer('AdjustEcalTimingFromLaser',
                               
                               # Tambe tests with this directory
-                              dirInPutFilesname = cms.string("/hdfs/cms/user/norbert/data/Validlaser/"),
-                              # gio tests with this OTHER directory
-                              # dirInPutFilesname = cms.string("/data/franzoni/data/laserN_tuples/"),
+                              #dirInPutFilesname = cms.string("/hdfs/cms/user/norbert/data/Validlaser/"),
+                              # gio tests with this OTHER directory, on pcminn03
+                              #dirInPutFilesname = cms.string("/data/tambe/DataSet/laserN_tuples/"),
+                              dirInPutFilesname = cms.string("/data/franzoni/data/LaserSelected/"),
 
 
                               # where the output plots will be stored
-                              dirOutPutPlotsname = cms.string("LaserTimingShiftRun163297VsRun1634833"),
+                              # dirOutPutPlotsname = cms.string("LaserTimingShiftRun163297VsRun1634833"),
+                              dirOutPutPlotsname = cms.string("LaserTimingShiftRun163291VsRun163333"),
 
                               # the two runs to be compared
                               # Tambe uses these runs
-                              RunB4TS = cms.int32(160111), 
-                              RunAFTS = cms.int32(160138), 
+                              RunB4TS = cms.int32(163291), 
+                              RunAFTS = cms.int32(163333), 
 
                               # Gio uses these OTHER runs
                               # RunB4TS = cms.int32(158851), 
