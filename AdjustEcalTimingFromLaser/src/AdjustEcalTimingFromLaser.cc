@@ -13,7 +13,7 @@
 //
 // Original Author:  Tambe_Ebai_Norber_+_Giovanni_(UMN) 
 //         Created:  Fri Mar  9 14:33:49 CET 2012
-// $Id: AdjustEcalTimingFromLaser.cc,v 1.3 2012/03/12 18:40:11 franzoni Exp $
+// $Id: AdjustEcalTimingFromLaser.cc,v 1.4 2012/03/15 17:55:26 franzoni Exp $
 //
 //
 
@@ -68,10 +68,10 @@ const int mxNumXtalInCCU = 25;
 const int numSC = 9;
 // GF: which of the following can be replaced?
  //  Want to do CCU Id timing.
-const  int EBMaxSM  = 36;
-const  int maxNumCCUInFed  = EcalTrigTowerDetId::kEBTowersPerSM+2;
-const   int maxEEsm = 18;
-const  int maxXtalInCCU = 25;
+const  int  EBMaxSM  = 36;
+const  int  maxNumCCUInFed  = EcalTrigTowerDetId::kEBTowersPerSM+2;
+const  int  maxEEsm = 18;
+const  int  maxXtalInCCU = 25;
 
 using namespace std;
 
@@ -1172,7 +1172,7 @@ AdjustEcalTimingFromLaser::beginJob()
       std::string fedhistname2 = "CCU_Mean_Time_EE-Fed";
       std::string fedhtitle = "CCU Mean Time Shift[ns]EE";  // setting title like dis b/c diff uses name.
       //fedhistname +="EB";
-	//For Run A EE Minus
+      //For Run A EE Minus
       fedhistname1 += ConvertIntToString(( eeMnum + 601));
       fedhistname2 += ConvertIntToString(( eeMnum + 601));
       fedhtitle += ConvertIntToString(Numbers::iEE(eeMnum +1) );
@@ -1443,7 +1443,8 @@ AdjustEcalTimingFromLaser::init_ttree(TTree * t, struct ntu_xtals * x)
 TProfile2D*
 AdjustEcalTimingFromLaser::SubtractTwoTProfile2D( TProfile2D* hprof_runA, TProfile2D* hprof_runB)
 {
-  if(!hprof_runA){cout << "No input histograms was put" << endl;}
+  if(!hprof_runA){cout << "No input histograms was put, first of two" << endl;}
+  if(!hprof_runB){cout << "No input histograms was put, second of two" << endl;}
 
   // TProfile2D*  clonehprof = (TProfile2D*)hprof_runA->Clone("CCUMeantimeDiff");
 
@@ -1476,35 +1477,44 @@ AdjustEcalTimingFromLaser::SubtractTwoTProfile2D( TProfile2D* hprof_runA, TProfi
 			  // get number entries in Each 2D First.
 			  int nentriesA =  hprof_runA->GetBinEntries(binsA);
 			  int nentriesB =  hprof_runB->GetBinEntries(binsB);
+
+			  float timeshift(0);
 			  
+			  if(nentriesA==0 && nentriesB==0)
+			    {
+			      // if there's data for neither of two runs => likely a permanently dead region or a non-existsing EE area
+			      // set the  difference to -100
+			      timeshift = -100;
+			      //continue;
+			    }
+			  // handle/skip CCU without reading  at either runs
+			  else if((timeA == 0 && timeB !=0) || (timeA != 0 && timeB ==0)) 
+			    {
+			      // if there's data for only of the two runs, set the value of the difference to -110
+			      timeshift = -110;
+			      //continue;
+			    }
+			  else
+			    {
+			      // Time Diff
+			      timeshift = timeA - timeB;
+			    }
+
 			  
-			  // skip CCU without reading  at either runs
-			  if((timeA == 0 && timeB !=0) || (timeA != 0 && timeB ==0)) continue;
-			  // Time Diff
-			  float timeshift = timeA - timeB;
-			  
-			  // check here for Empty CCUs in A and B and set Time Extra Large.;
-			  if( nentriesA == 0 && nentriesB == 0)
-				{
-				  if(timeA == 0 || timeB == 0)
-					{
-					  result_hprof->SetBinContent(binsA, -9999999); // If No entry Set Etra large Time,Plot shows white.
-					}else{ cout <<" This Bin is crazy! No entry! No Time! how come reading?" << endl;}
-				}else
-				{			  
-				  result_hprof->SetBinContent(binsA, timeshift);
-				  result_hprof->SetBinEntries(binsA, 1);
-				}
-			  //result_hprof->Fill(ixa, iya, timeshift);
+			  result_hprof->SetBinContent(binsA, timeshift);
+			  result_hprof->SetBinEntries(binsA, 1);
 			  
 			  //debug for CCUs with either runs have zero time.
 			  if((timeshift >=5 || timeshift <=-5) && (timeA !=0 && timeB !=0))
-				{
-				  cout <<" CCU With Huge TimeShift Has Bins = " << "[" << ixa << "," << iya << "]" <<" and has "<< " timeA = " << timeA << " and timeB = " << timeB << " with time Difference = " << timeshift << endl;
-				}
-			}
-		}
-	}
+			    {
+			      cout <<" CCU With Huge TimeShift Has Bins = " 
+				   << "[" << ixa << "," << iya << "]" 
+				   <<" and has "<< " timeA = " << timeA << " and timeB = " << timeB << " with time Difference = " 
+				   << timeshift << endl;
+			    } // if
+			} // loop on iya
+		} // loop on ixa
+	}// end if
   
   result_hprof->SetMinimum(binlow);
   result_hprof->SetMaximum(binhigh);
@@ -1530,27 +1540,27 @@ void AdjustEcalTimingFromLaser::SaveCanvasInDir( TProfile2D* mytprof)
   mystyle.SetLegendBorderSize(0.2);
   mystyle.SetStatH(0.2);
   mystyle.SetOptStat(111111);
-// Sets Histogram Title at Center
-//  mystyle.SetTitleX(0.5);
- // mystyle.SetTitleAlign(23);
+  // Sets Histogram Title at Center
+  //  mystyle.SetTitleX(0.5);
+  // mystyle.SetTitleAlign(23);
   TCanvas myCanvas;
   myCanvas.cd();
-
-// make Empty Bins appear white.
-//int nxbins = mytprof->GetNbinsX();
-//int nybins = mytprof->GetNbinsY();
   
-// Loop over bins and set empty bins to show white.
-//for(int ii=0; ii<= nybins; ii++)
-//{
-//  for( int jj=0; jj <= nxbins; jj++)
- //    {
- //      int bin = mytprof->GetBin(ii,jj);
- //      int nentry = mytprof->GetBinEntries(bin);
-//if(nentry == 0){ mytprof->SetBinContent(bin, -999999);};
- //     }
-//}
-
+  // make Empty Bins appear white.
+  //int nxbins = mytprof->GetNbinsX();
+  //int nybins = mytprof->GetNbinsY();
+  
+  // Loop over bins and set empty bins to show white.
+  //for(int ii=0; ii<= nybins; ii++)
+  //{
+  //  for( int jj=0; jj <= nxbins; jj++)
+  //    {
+  //      int bin = mytprof->GetBin(ii,jj);
+  //      int nentry = mytprof->GetBinEntries(bin);
+  //if(nentry == 0){ mytprof->SetBinContent(bin, -999999);};
+  //     }
+  //}
+  
   mytprof->GetXaxis()->SetTitle("i#phi");
   mytprof->GetYaxis()->SetTitle("i#eta");
   mytprof->Draw("colz"); // Where text happens.
@@ -1558,7 +1568,7 @@ void AdjustEcalTimingFromLaser::SaveCanvasInDir( TProfile2D* mytprof)
   filename += mytprof->GetTitle();
   filename += ".png";
   myCanvas.Print(filename.c_str());
-	  
+  
 } // end of fxn to save canvas.
 
 
