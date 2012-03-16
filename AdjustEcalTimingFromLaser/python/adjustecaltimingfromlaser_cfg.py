@@ -24,26 +24,20 @@ process.load("Configuration.StandardSequences.Geometry_cff")
 process.demo = cms.EDAnalyzer('AdjustEcalTimingFromLaser',
                               
                               # Tambe tests with this directory
-                              #dirInPutFilesname = cms.string("/hdfs/cms/user/norbert/data/Validlaser/"),
-                              # gio tests with this OTHER directory, on pcminn03
-                              #dirInPutFilesname = cms.string("/data/tambe/DataSet/laserN_tuples/"),
+                              # dirInPutFilesname = cms.string("/hdfs/cms/user/norbert/data/Validlaser/"),
+                              # gio tests with this OTHER directory
                               dirInPutFilesname = cms.string("/data/franzoni/data/LaserSelected/"),
 
-
-                              # where the output plots will be stored
-                              # dirOutPutPlotsname = cms.string("LaserTimingShiftRun163297VsRun1634833"),
-                              dirOutPutPlotsname = cms.string("LaserTimingShiftRun163291VsRun163333"),
+                              # directory where the output plots will be stored
+                              dirOutPutPlotsname = cms.string("LaserTimingShiftRun163297VsRun1634833/"),
+                              # name of the output .root file
+                              fileOutPutName = cms.string("output-file.root"),
 
                               # the two runs to be compared
                               # Tambe uses these runs
                               RunB4TS = cms.int32(163291), 
                               RunAFTS = cms.int32(163333), 
-
-                              # Gio uses these OTHER runs
-                              # RunB4TS = cms.int32(158851), 
-                              # RunAFTS = cms.int32(159873), 
-
-
+                              
                               # laser wavelength being considered
                               NWL = cms.int32(3), 
 
@@ -54,6 +48,14 @@ process.demo = cms.EDAnalyzer('AdjustEcalTimingFromLaser',
                               # SetMaximum Minimum of Bins on TimeshiftHist
                               lbin = cms.double(-5.0),
                               hbin = cms.double(5.0),
+
+                              # this flag determines whether for single fed plots
+                              # the average difference should be removed from the displayed single-CCU differences
+                              # the average to be subtracted is computed over:
+                              #    - a whole sector, for EE feds
+                              #    - separately for the two laser light distribution modules (I-shaped and L-shaped) of EB supermodules 
+                              subtractAverageDifferences = cms.bool(False)
+                              
 )
 
 process.p = cms.Path(process.demo)

@@ -13,7 +13,7 @@
 //
 // Original Author:  Tambe_Ebai_Norber_+_Giovanni_(UMN) 
 //         Created:  Fri Mar  9 14:33:49 CET 2012
-// $Id: AdjustEcalTimingFromLaser.cc,v 1.4 2012/03/15 17:55:26 franzoni Exp $
+// $Id: AdjustEcalTimingFromLaser.cc,v 1.5 2012/03/15 22:01:20 franzoni Exp $
 //
 //
 
@@ -101,12 +101,15 @@ private:
   // initializes access to the tree
   void init_ttree(TTree * t, struct ntu_xtals * x);
   TProfile2D* SubtractTwoTProfile2D( TProfile2D* hprof_runA, TProfile2D* hprof_runB);
+  TProfile2D* SubtractTwoTProfile2D( TProfile2D* hprof_runA, TProfile2D* hprof_runB, bool removeSectorAverate, bool isEb);
   void GetCCUIdandTimeshiftTProfileHist(TProfile2D* myprof,  int iz);
   void SaveCanvasInDir( TProfile2D* mytprof);
   void writehist();
   void moveBinsTProfile2D(TProfile2D* myprof);
   void Savehist(TH1F* myhist);
   TH1F* subtracthist( TH1F* hprof_runA, TH1F* hprof_runB);
+  bool isInModuleI( int binx, int biny, bool isEBPlus);
+  bool isInModuleL( int binx, int biny, bool isEBPlus);
 
   // ----------member data ---------------------------
   
@@ -115,6 +118,8 @@ private:
   int NWLtmp;
   std::string dirInPutFilesname;
   std::string dirOutPutPlotsname ;
+  std::string fileOutPutName ;
+  bool        subtractAverageDifferences;
   float binlow, binhigh;
   float lbin, hbin;
 
@@ -284,6 +289,8 @@ AdjustEcalTimingFromLaser::AdjustEcalTimingFromLaser(const edm::ParameterSet& iC
   RunAFTS ( iConfig.getParameter<int>("RunAFTS") ) ,
   dirInPutFilesname ( iConfig.getParameter<std::string>("dirInPutFilesname") ) ,
   dirOutPutPlotsname ( iConfig.getParameter<std::string>("dirOutPutPlotsname") ) ,
+  fileOutPutName ( iConfig.getParameter<std::string>("fileOutPutName") ) ,
+  subtractAverageDifferences  ( iConfig.getParameter<bool>("subtractAverageDifferences") ) ,
   NWLtmp  ( iConfig.getParameter<int>("NWL") ) ,
   binlow  ( iConfig.getParameter<double>("binlow") ) ,
   binhigh ( iConfig.getParameter<double>("binhigh") ) ,
@@ -292,6 +299,7 @@ AdjustEcalTimingFromLaser::AdjustEcalTimingFromLaser(const edm::ParameterSet& iC
 
 {
   //now do what ever initialization is needed
+  dirOutPutPlotsname+="/";
 }
 
 
@@ -846,10 +854,9 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
   Savehist(eepccutimedistshift);
 
 
-  ////// Calculate CCU Time Shift Here!////////
+  ////// Calculate CCU Time Shifts Here!////////
   
   //First for ALL EB and EE
-  
   //EB 
   CrysTimeShiftEB = SubtractTwoTProfile2D(FedAvgTimingEB,  FedAvgTimingEB_RunB);
   CrysTimeShiftEB ->SetMinimum(lbin);
@@ -890,8 +897,7 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
   // EB
   for( int nh = 0; nh < numEBFed; nh++)
     {
-      
-      CCUTimeShiftEB[nh]= SubtractTwoTProfile2D(CCUAvgTimeEB_RunA[nh], CCUAvgTimeEB_RunB[nh]);
+      CCUTimeShiftEB[nh]= SubtractTwoTProfile2D(CCUAvgTimeEB_RunA[nh], CCUAvgTimeEB_RunB[nh], subtractAverageDifferences, true);
       CCUTimeShiftEB[nh]->SetMinimum(lbin);
       CCUTimeShiftEB[nh]->SetMaximum(hbin);
       // Get CCUId and Time
@@ -930,7 +936,7 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
   for ( int eenh = 0; eenh < numSC; eenh++)
     {
       //EE plus
-      CCUTimeShiftEEP[eenh]= SubtractTwoTProfile2D(CCUAvgTimeEEP_RunA[eenh], CCUAvgTimeEEP_RunB[eenh]);
+      CCUTimeShiftEEP[eenh]= SubtractTwoTProfile2D(CCUAvgTimeEEP_RunA[eenh], CCUAvgTimeEEP_RunB[eenh], subtractAverageDifferences, false);
       CCUTimeShiftEEP[eenh]->SetMinimum(lbin);
       CCUTimeShiftEEP[eenh]->SetMaximum(hbin);
       //GetCCUId and Time EE+
@@ -939,7 +945,7 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
       // getCCUId(GetCCUIdandTimeShift(CCUTimeShiftEEP[eenh], 1)); 
       SaveCanvasInDir(CCUTimeShiftEEP[eenh]);	    
       //EE Minus   
-      CCUTimeShiftEEM[eenh]= SubtractTwoTProfile2D(CCUAvgTimeEEM_RunA[eenh], CCUAvgTimeEEM_RunB[eenh]);
+      CCUTimeShiftEEM[eenh]= SubtractTwoTProfile2D(CCUAvgTimeEEM_RunA[eenh], CCUAvgTimeEEM_RunB[eenh], subtractAverageDifferences, false);
       
       CCUTimeShiftEEM[eenh]->SetMinimum(lbin);
       CCUTimeShiftEEM[eenh]->SetMaximum(hbin);
@@ -957,8 +963,8 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
   //GetCCUIdandTimeshiftTProfileHist(ccutshiftEEM, -1);
   
   // Ssave Out Put Files  here!
-  //savefile = new TFile("EcalLaserTiming_March06_160111Vs160138_March06.root", "recreate");
-  savefile = new TFile("March14_LaserTiming_163291Vs163333_March14.root", "recreate");
+  //savefile = new TFile("March14_LaserTiming_163291Vs163333_March14.root", "recreate");
+  savefile = new TFile(fileOutPutName.c_str(), "recreate");
   std::cout << "About to save histos to fole: is it accessible&open (0/1)? " <<  savefile->IsOpen() << std::endl;
 
   std::cout << "is file open, just before writing in it? " <<  savefile->IsOpen() << std::endl;
@@ -975,7 +981,11 @@ void
 AdjustEcalTimingFromLaser::beginJob()
 {
 
- 
+  // create folder where you'll store the files
+  std::string  theCommand   = std::string("mkdir ")+dirOutPutPlotsname; 
+  system(theCommand.c_str());
+
+
   // Run A
   for( int ii = 0; ii < EBMaxSM; ii++)
     {
@@ -1433,88 +1443,163 @@ AdjustEcalTimingFromLaser::init_ttree(TTree * t, struct ntu_xtals * x)
     tx->SetBranchStatus("wl",1);
     tx->SetBranchStatus("qmax",1);
     tx->SetBranchStatus("tmax",1);
-
 }
 
-
+TProfile2D*
+AdjustEcalTimingFromLaser::SubtractTwoTProfile2D( TProfile2D* hprof_runA, TProfile2D* hprof_runB)
+{ // when SubtractTwoTProfile2D is called with only two arguments, 
+  // don't subtract the average difference - keep compatibility with the old version
+  bool removeSectorAverage = false;
+  bool isEb                = true; // this value is actually irrelevant, given removeSectorAverage==false; but need be set to something
+  return SubtractTwoTProfile2D(  hprof_runA,  hprof_runB, removeSectorAverage, isEb);
+}
 
 
 /////////&&&&&& Fxn To calculate TprofSubtract &&&&&&&/////////
 TProfile2D*
-AdjustEcalTimingFromLaser::SubtractTwoTProfile2D( TProfile2D* hprof_runA, TProfile2D* hprof_runB)
+AdjustEcalTimingFromLaser::SubtractTwoTProfile2D( TProfile2D* hprof_runA, TProfile2D* hprof_runB, 
+						  bool removeSectorAverage, bool isEb)
 {
+
   if(!hprof_runA){cout << "No input histograms was put, first of two" << endl;}
   if(!hprof_runB){cout << "No input histograms was put, second of two" << endl;}
 
-  // TProfile2D*  clonehprof = (TProfile2D*)hprof_runA->Clone("CCUMeantimeDiff");
-
   int nxbinsA = hprof_runA->GetNbinsX();
   int nybinsA = hprof_runA->GetNbinsY();
-
   int nxbinsB = hprof_runB->GetNbinsX();
   int nybinsB = hprof_runB->GetNbinsY();  
-  //  cout <<" Number of Xbins in Run A = " << nxbinsA << " And Number of YBins in Run A = " << nybinsA << endl;
-  //  cout <<" Number of Xbins in Run B = " << nxbinsB << " And Number of YBins in Run B = " << nybinsB << endl;
   
   // Define New Histogram to hold CCU Time Shift
   TProfile2D *result_hprof =(TProfile2D*)hprof_runA->Clone("CCUMeanTimeShifthprof");
-
   result_hprof->Reset();
   
-  // loop over bins of both hists:
-  if( nxbinsA == nxbinsB && nybinsA == nybinsB)
+  // loop over bins of both hists: if sizes don't match, compain and bail out
+  if( ! (nxbinsA == nxbinsB && nybinsA == nybinsB) ){
+    std::cout << "+++ you're subtracting two TProfile2D which are of different size - you cannot do that. Bailing out" << std::endl;
+    assert(0);     return NULL;
+  }
+    
+  // define average time difference for L-shapend and I-shaped side of the EB supermodules
+  // both fixed at 0 if removeSectorAverage==false
+  // kept the same if isEb==false 
+  float averageDiffL(0);  float averageDiffI(0);
+  int   numActiveL(0);    int   numActiveI(0);
+  
+  bool isEbPlus(false);
+  // determine meaningfully isEbPlus, if removeSectorAverage==true
+  if(removeSectorAverage && isEb){ 
+    // if you're in EB, determined whether it's EB+ or EB-
+    float sideA = ( hprof_runA->GetYaxis()->GetXmin() + hprof_runA->GetYaxis()->GetXmax() )  ;
+    float sideB = ( hprof_runB->GetYaxis()->GetXmin() + hprof_runB->GetYaxis()->GetXmax() )  ;
+    if( sideA * sideB < 0)
+      {	std::cout << "+++ you're subtracting two TProfile2D which are on opposited side of EB - you cannot do that. Bailing out" << std::endl;
+	assert(0);     return NULL;      }
+    else
+      { // if product if positive, sign determined by one of the two
+	isEbPlus = (sideA>0 ? true : false);      }
+    //std::cout << "GF test sideA: " << sideA << "\t" << " sideB: " << sideB << " isEbPlus: " << isEbPlus<< std::endl;
+  }// end-if isEb
+  
+  if(removeSectorAverage) {
+    
+    // now 
+    for( int ixa = 1; ixa <= nxbinsA; ixa++)
+      {
+	for( int iya = 1; iya <= nybinsA; iya++)
+	  {
+	    int binsA = hprof_runA->GetBin(ixa, iya);
+	    int binsB = hprof_runB->GetBin(ixa, iya);
+	    // Get CCU time for A and B
+	    float timeA = hprof_runA->GetBinContent(binsA);
+	    float timeB = hprof_runB->GetBinContent(binsB);
+	    // get number entries in Each 2D First.
+	    int nentriesA =  hprof_runA->GetBinEntries(binsA);
+	    int nentriesB =  hprof_runB->GetBinEntries(binsB);
+
+	    // you need to have two valid averages to consider a CCU for the average difference
+	    if (nentriesA==0 || nentriesB==0) continue;
+	    if(isEb)
+	      {
+		// in the EB case, discriminate I and L, and incremet mean accordingly
+		if ( isInModuleI (ixa, iya, isEbPlus ) ) {averageDiffI += (timeA-timeB);  numActiveI++; }
+		if ( isInModuleL (ixa, iya, isEbPlus ) ) {averageDiffL += (timeA-timeB);  numActiveL++; }
+	      }
+	    else
+	      { // in the EE case, easy =>  do global average
+		averageDiffL += (timeA-timeB);  numActiveL++;
+		averageDiffI += (timeA-timeB);  numActiveI++;
+	      }
+	    
+	    
+	  }// loop y bins 
+      }// loop x b bins
+  averageDiffL /= numActiveL;
+  averageDiffI /= numActiveI;
+  //std::cout << "GF debug - averageDiffL: " << averageDiffL << " numActiveL: " << numActiveL 
+  //<< " averageDiffI: " << averageDiffI << " numActiveI: " << numActiveI << std::endl;
+
+  } //end-if removeSectorAverage
+
+
+  // computing differences, and filling the TProfile2D which will be returned
+  for( int ixa = 1; ixa <= nxbinsA; ixa++)
+    {
+      for( int iya = 1; iya <= nybinsA; iya++)
 	{
-	  for( int ixa = 1; ixa <= nxbinsA; ixa++)
-		{
-		  for( int iya = 1; iya <= nybinsA; iya++)
-			{
-			  int binsA = hprof_runA->GetBin(ixa, iya);
-			  int binsB = hprof_runB->GetBin(ixa, iya);
-			  // Get CCU time for A and B
-			  float timeA = hprof_runA->GetBinContent(binsA);
-			  float timeB = hprof_runB->GetBinContent(binsB);
-			  
-			  // get number entries in Each 2D First.
-			  int nentriesA =  hprof_runA->GetBinEntries(binsA);
-			  int nentriesB =  hprof_runB->GetBinEntries(binsB);
+	  int binsA = hprof_runA->GetBin(ixa, iya);
+	  int binsB = hprof_runB->GetBin(ixa, iya);
+	  // Get CCU time for A and B
+	  float timeA = hprof_runA->GetBinContent(binsA);
+	  float timeB = hprof_runB->GetBinContent(binsB);
+	  // get number entries in Each 2D First.
+	  int nentriesA =  hprof_runA->GetBinEntries(binsA);
+	  int nentriesB =  hprof_runB->GetBinEntries(binsB);
+	  
+	  float timeshift   (0);
+	  float averageShift(0);
+	  // now determine if  there's any average time difference to be  removed
+	  if (removeSectorAverage){
+	    if (isEb ) 	    {// in case of EB, chose between I- and L-shaped module
+	      if ( isInModuleL (ixa, iya, isEbPlus ) ) averageShift =averageDiffL;
+	      if ( isInModuleI (ixa, iya, isEbPlus ) ) averageShift =averageDiffI;
+	      //std::cout << "you are removing and this is EB: => averageShift is " << averageShift << std::endl; 
+	    }
+	    else {// in case of EE, the two cumulative differences are identical -> pick one    
+	      averageShift = averageDiffL;
+	      //std::cout << "you are removing and this is EE: => averageShift is " << averageShift << std::endl; 
+	    }
+	  }
 
-			  float timeshift(0);
-			  
-			  if(nentriesA==0 && nentriesB==0)
-			    {
-			      // if there's data for neither of two runs => likely a permanently dead region or a non-existsing EE area
-			      // set the  difference to -100
-			      timeshift = -100;
-			      //continue;
-			    }
-			  // handle/skip CCU without reading  at either runs
-			  else if((timeA == 0 && timeB !=0) || (timeA != 0 && timeB ==0)) 
-			    {
-			      // if there's data for only of the two runs, set the value of the difference to -110
-			      timeshift = -110;
-			      //continue;
-			    }
-			  else
-			    {
-			      // Time Diff
-			      timeshift = timeA - timeB;
-			    }
 
-			  
-			  result_hprof->SetBinContent(binsA, timeshift);
-			  result_hprof->SetBinEntries(binsA, 1);
-			  
-			  //debug for CCUs with either runs have zero time.
-			  if((timeshift >=5 || timeshift <=-5) && (timeA !=0 && timeB !=0))
-			    {
-			      cout <<" CCU With Huge TimeShift Has Bins = " 
-				   << "[" << ixa << "," << iya << "]" 
-				   <<" and has "<< " timeA = " << timeA << " and timeB = " << timeB << " with time Difference = " 
-				   << timeshift << endl;
-			    } // if
-			} // loop on iya
-		} // loop on ixa
-	}// end if
+	  // if there's data for neither of two runs => likely a permanently dead region or a non-existsing EE area
+	  // set the  difference to -100
+	  if(nentriesA==0 && nentriesB==0)
+	    {
+	      timeshift = -100;         			    }
+	  // handle/skip CCU without reading  at either runs
+	  else if((timeA == 0 && timeB !=0) || (timeA != 0 && timeB ==0)) 
+	    { // if there's data for only of the two runs, set the value of the difference to -110
+	      timeshift = -110;          			    }
+	  else
+	    {  // Time Diff
+	      // std::cout << "this is isEb: " << isEb <<  " isEbPlus: " << isEbPlus << " and  averageShift is: " <<    averageShift << std::endl;
+	      timeshift = (timeA - timeB) - averageShift;
+	    }
+	  
+	  result_hprof->SetBinContent(binsA, timeshift);
+	  result_hprof->SetBinEntries(binsA, 1);
+	    
+	  //debug for CCUs with either runs have zero time.
+	  if((timeshift >=5 || timeshift <=-5) && (timeA !=0 && timeB !=0))
+	    {
+	      cout <<" CCU With Huge TimeShift Has Bins = " 
+		   << "[" << ixa << "," << iya << "]" 
+		   <<" and has "<< " timeA = " << timeA << " and timeB = " << timeB << " with time Difference = " 
+		   << timeshift << endl;
+	    } // if
+	} // loop on iya
+      } // loop on ixa
+  
   
   result_hprof->SetMinimum(binlow);
   result_hprof->SetMaximum(binhigh);
@@ -1564,7 +1649,7 @@ void AdjustEcalTimingFromLaser::SaveCanvasInDir( TProfile2D* mytprof)
   mytprof->GetXaxis()->SetTitle("i#phi");
   mytprof->GetYaxis()->SetTitle("i#eta");
   mytprof->Draw("colz"); // Where text happens.
-  std::string filename="LaserTimingShiftRun163291VsRun163333/";
+  std::string filename=dirOutPutPlotsname;
   filename += mytprof->GetTitle();
   filename += ".png";
   myCanvas.Print(filename.c_str());
@@ -2249,16 +2334,15 @@ TDirectory* CCUInEB_RunB = savefile->mkdir("CCUInEBFedsTime_RunB");
  CCUInEB_RunB->cd();
 
  for( int fednum = 0; fednum < numEBFed; fednum++)
-  {
-	//	 CCUAvgTimeEB_RunB
-	CCUAvgTimeEB_RunB[fednum]->GetXaxis()->SetTitle("i#phi");
-	CCUAvgTimeEB_RunB[fednum]->GetYaxis()->SetTitle("i#eta");
-	CCUAvgTimeEB_RunB[fednum]->SetMinimum(-50);
-    CCUAvgTimeEB_RunB[fednum]->SetMaximum(50);
-    CCUAvgTimeEB_RunB[fednum]->Draw("colztext");
-    CCUAvgTimeEB_RunB[fednum]->Write(); 
-	 
-  }
+   {
+     //	 CCUAvgTimeEB_RunB
+     CCUAvgTimeEB_RunB[fednum]->GetXaxis()->SetTitle("i#phi");
+     CCUAvgTimeEB_RunB[fednum]->GetYaxis()->SetTitle("i#eta");
+     CCUAvgTimeEB_RunB[fednum]->SetMinimum(-50);
+     CCUAvgTimeEB_RunB[fednum]->SetMaximum(50);
+     CCUAvgTimeEB_RunB[fednum]->Draw("colztext");
+     CCUAvgTimeEB_RunB[fednum]->Write(); 
+   }
  
 // DO EE   Here!
  for( int eeSec= 0; eeSec < 9; eeSec++)
@@ -2390,7 +2474,7 @@ void AdjustEcalTimingFromLaser::Savehist(TH1F* myhist)
   myhist->GetXaxis()->SetTitle("Time Shift[ns]");
   myhist->GetYaxis()->SetTitle("Number of CCUs");  
   myhist->Draw(); // Where text happens.
-  std::string filename="LaserTimingShiftRun163291VsRun163333/";
+  std::string filename=dirOutPutPlotsname;
   filename += myhist->GetTitle();
   filename += ".png";
   myc.Print(filename.c_str());
@@ -2443,6 +2527,17 @@ TH1F* AdjustEcalTimingFromLaser::subtracthist( TH1F* hprof_runA, TH1F* hprof_run
   
 } // end of fxn to subtract hists
 
+
+bool AdjustEcalTimingFromLaser::isInModuleI( int binx, int biny, bool isEBPlus)
+{
+  if  (isEBPlus) {return (binx>=3 && biny>=2);  }
+  else           {return (binx<=2 && biny<=16); }
+}
+
+bool AdjustEcalTimingFromLaser::isInModuleL( int binx, int biny, bool isEBPlus)
+{
+  return (! isInModuleI( binx, biny, isEBPlus) );
+}
 
 
 //define this as a plug-in
