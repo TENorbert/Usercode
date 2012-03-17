@@ -13,7 +13,7 @@
 //
 // Original Author:  Tambe_Ebai_Norber_+_Giovanni_(UMN) 
 //         Created:  Fri Mar  9 14:33:49 CET 2012
-// $Id: AdjustEcalTimingFromLaser.cc,v 1.6 2012/03/16 14:30:02 franzoni Exp $
+// $Id: AdjustEcalTimingFromLaser.cc,v 1.7 2012/03/17 19:15:11 tambe Exp $
 //
 //
 
@@ -111,7 +111,10 @@ private:
   TH1F* subtracthist( TH1F* hprof_runA, TH1F* hprof_runB);
   bool isInModuleI( int binx, int biny, bool isEBPlus);
   bool isInModuleL( int binx, int biny, bool isEBPlus);
+  void readHwSettingsFromDb();
+  void makeXmlFiles();
   TH1F* make1dProjection(TProfile2D* hprof);
+
 
   // ----------member data ---------------------------
   
@@ -2631,6 +2634,108 @@ TH1F* AdjustEcalTimingFromLaser::subtracthist( TH1F* hprof_runA, TH1F* hprof_run
   return myhist;
   
 } // end of fxn to subtract hists
+
+
+
+void AdjustEcalTimingFromLaser::readHwSettingsFromDb()
+{
+  /*
+
+  // now read the DB and get the absolute delays
+  int feDelaysFromDBEB[EBDetId::MAX_SM][maxNumCCUinFed];
+  int feDelaysFromDBEE[numEEsm][maxNumCCUinFed];
+  for(int i=0; i<EBDetId::MAX_SM; ++i)
+  {
+  for(int j=0; j<maxNumCCUinFed; ++j)
+  {
+  feDelaysFromDBEB[i][j] = -999999;
+  }
+  }
+  for(int i=0; i<numEEsm; ++i)
+  {
+  for(int j=0; j<maxNumCCUinFed; ++j)
+  {
+  feDelaysFromDBEE[i][j] = -999999;
+  }
+  }
+  
+  if(readDelaysFromDB_)
+  {
+  string sid;
+  string user;
+  string pass;
+  std::cout << "Please enter sid: ";
+  std::cin >> sid;
+  std::cout << "Please enter user: ";
+  std::cin >> user;
+  std::cout << "Please enter password: ";
+  std::cin >> pass;
+    EcalCondDBInterface* econn;
+    try {
+    try {
+    cout << "Making DB connection..." << flush;
+    econn = new EcalCondDBInterface( sid, user, pass );
+    cout << "Done." << endl;
+    } catch (runtime_error &e) {
+    cerr << e.what() << endl;
+    exit(-1);
+    }
+    RunIOV iov = econn->fetchRunIOV("P5_Co", runNum);
+    std::list<ODDelaysDat> delays = econn->fetchFEDelaysForRun(&iov);
+    std::list<ODDelaysDat>::const_iterator i = delays.begin();
+    std::list<ODDelaysDat>::const_iterator e = delays.end();
+    while (i != e)
+    {
+    int idcc = i->getFedId()-600;
+    int ism = 0;
+    if(idcc >= 1 && idcc <= 9)        // EEM
+	    ism = idcc;
+	    else if(idcc >= 10 && idcc <= 45) // EB
+	    ism = idcc-9;
+	    else if(idcc >= 46 && idcc <= 54) // EEP
+	    ism = idcc-45+9;
+	    else
+	    std::cout << "warning: strange iDCC read from db: " << idcc << ". " << std::endl;
+	    
+	    int ccuId = i->getTTId();
+	    if(idcc >= 10 && idcc <= 45) // EB
+	    {
+	    if(feDelaysFromDBEB[ism-1][ccuId-1] != -999999)
+	    std::cout << "warning: duplicate entry in DB found for fed: " << idcc+600
+	    << " CCU: " << ccuId << "; replacing old entry with this one." << std::endl;
+	    feDelaysFromDBEB[ism-1][ccuId-1] = i->getTimeOffset();
+	    }
+	    else if( (idcc >= 1 && idcc <= 9) || (idcc >= 46 && idcc <= 54)) // EE
+	    {
+	    if(feDelaysFromDBEE[ism-1][ccuId-1] != -999999)
+	    std::cout << "warning: duplicate entry in DB found for fed: " << idcc+600
+	    << " CCU: " << ccuId << "; replacing old entry with this one." << std::endl;
+	    feDelaysFromDBEE[ism-1][ccuId-1] = i->getTimeOffset();
+	    }
+	    
+	    i++;
+	    }
+	    } catch (exception &e) {
+	    cout << "ERROR:  " << e.what() << endl;
+	    } catch (...) {
+	    cout << "Unknown error caught" << endl;
+	    }
+	    std::cout << "ECAL hardware latency settings retrieved from db for run: " << runNum << std::endl; 
+	    }
+  */
+  ;  
+}
+	    
+
+
+void AdjustEcalTimingFromLaser::makeXmlFiles()
+{
+  ;
+
+  // get 
+}
+
+
 
 
 bool AdjustEcalTimingFromLaser::isInModuleI( int binx, int biny, bool isEBPlus)
