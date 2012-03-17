@@ -13,7 +13,7 @@
 //
 // Original Author:  Tambe_Ebai_Norber_+_Giovanni_(UMN) 
 //         Created:  Fri Mar  9 14:33:49 CET 2012
-// $Id: AdjustEcalTimingFromLaser.cc,v 1.5 2012/03/15 22:01:20 franzoni Exp $
+// $Id: AdjustEcalTimingFromLaser.cc,v 1.6 2012/03/16 14:30:02 franzoni Exp $
 //
 //
 
@@ -69,7 +69,8 @@ const int numSC = 9;
 // GF: which of the following can be replaced?
  //  Want to do CCU Id timing.
 const  int  EBMaxSM  = 36;
-const  int  maxNumCCUInFed  = EcalTrigTowerDetId::kEBTowersPerSM+2;
+const  int  maxNumCCUInFed  = EcalTrigTowerDetId::kEBTowersPerSM;
+//const  int  maxNumCCUInFed  = EcalTrigTowerDetId::kEBTowersPerSM+2;
 const  int  maxEEsm = 18;
 const  int  maxXtalInCCU = 25;
 
@@ -110,6 +111,7 @@ private:
   TH1F* subtracthist( TH1F* hprof_runA, TH1F* hprof_runB);
   bool isInModuleI( int binx, int biny, bool isEBPlus);
   bool isInModuleL( int binx, int biny, bool isEBPlus);
+  TH1F* make1dProjection(TProfile2D* hprof);
 
   // ----------member data ---------------------------
   
@@ -175,6 +177,11 @@ private:
   TProfile2D* CrysTimeShiftEB;
   TProfile2D* CrysTimeShiftEEP;
   TProfile2D* CrysTimeShiftEEM;
+
+  // CCU 1D projections
+  TH1F* EBCCU1dprojection[numEBFed];
+  TH1F* EEPCCU1dprojection[numSC];
+  TH1F* EEMCCU1dprojection[numSC];
   // NewHist for 5by5 binning
   //runA
   TProfile2D* ccutimeEBrunA;
@@ -188,7 +195,10 @@ private:
   TProfile2D* ccutshiftEB;
   TProfile2D* ccutshiftEEP;
   TProfile2D* ccutshiftEEM;
-
+  // 1D Projections Here!
+  TH1F* EBccu1dprojection;
+  TH1F* EEPccu1dprojection;
+  TH1F* EEMccu1dprojection;
 
   ///// 1D ccu timing here!
 
@@ -467,10 +477,10 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
 
 	      //if(m < EBMaxSM && ccuid < maxNumCCUInFed)
 	      //  {
-	      CCUInFedTimesEB_runB[numfed][ccuid-1] += (x.tmax[0]-5)*25;
+	      CCUInFedTimesEB_runA[numfed][ccuid-1] += (x.tmax[0]-5)*25;
 	      //CCUInFedTimesEB_runB[m][ccuid-1][xtalWithinCCUid] = (x.tmax[0]-5)*25;
 	      //CCUInFedTimesEB_runB[m][ccuid-1][nxtal -1] = (x.tmax[0]-5)*25;
-	      CCUInFedNumEntriesEB_runB[numfed][ccuid-1] ++;   // Not really used! Just for check!
+	      CCUInFedNumEntriesEB_runA[numfed][ccuid-1] ++;   // Not really used! Just for check!
 	      //  }
 	      
 	      //  Fill ccu 1D timing  dist for Run B
@@ -625,10 +635,10 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
 		std::cout << "Crystal with Id \t" << eid << " Has CCUid \t" << IdCCU  << std::endl;
 		//if(m < EBMaxSM && ccuid < maxNumCCUInFed)
 		//  {
-		CCUInFedTimesEB_runA[numfed][ccuid-1] += (x.tmax[0]- 5)*25;
+		CCUInFedTimesEB_runB[numfed][ccuid-1] += (x.tmax[0]- 5)*25;
 		//CCUInFedTimesEB_runA[m][ccuid-1][xtalWithinCCUid] = (x.tmax[0]- 5)*25;
 		//CCUInFedTimesEB_runA[m][ccuid-1][nxtal -1] = (x.tmax[0]- 5)*25;
-		CCUInFedNumEntriesEB_runA[numfed][ccuid-1] ++;
+		CCUInFedNumEntriesEB_runB[numfed][ccuid-1] ++;
 
 		//  }
 		
@@ -751,9 +761,11 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
 	  //for( int k = 0; k < maxXtalInCCU; k++)
 	  //  {
 	  //ccuInFedEBtimeRunA[ii][jj]->Fill( CCUInFedTimesEB_runA[ii][jj]/ CCUInFedNumEntriesEB_runA[ii][jj] );
-	  ccuInFedEBtimeRunA[ii]->Fill(CCUInFedTimesEB_runA[ii][jj]/ maxXtalInCCU); //CCUInFedNumEntriesEB_runA[ii][jj] );
-	  //  }
-	  ebccutimedistrunA->Fill(CCUInFedTimesEB_runA[ii][jj]/ maxXtalInCCU);
+	  // ccuInFedEBtimeRunA[ii]->Fill(CCUInFedTimesEB_runA[ii][jj]/ maxXtalInCCU); //CCUInFedNumEntriesEB_runA[ii][jj] );
+	  ccuInFedEBtimeRunA[ii]->Fill( (CCUInFedNumEntriesEB_runA[ii][jj]!=0)? CCUInFedTimesEB_runA[ii][jj]/ CCUInFedNumEntriesEB_runA[ii][jj] : 0);
+	  //  }   (CCUInFedNumEntriesEB_runA[ii][jj]!=0)? CCUInFedTimesEB_runA[ii][jj]/ CCUInFedNumEntriesEB_runA[ii][jj] : 0
+	  //		  ebccutimedistrunA->Fill(CCUInFedTimesEB_runA[ii][jj]/ maxXtalInCCU);
+	  ebccutimedistrunA->Fill( (CCUInFedNumEntriesEB_runA[ii][jj]!=0)? CCUInFedTimesEB_runA[ii][jj]/ CCUInFedNumEntriesEB_runA[ii][jj] : 0);
 	}
     }
 
@@ -767,9 +779,11 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
 	  //for( int k = 0; k < maxXtalInCCU; k++)
 	  //  {
 	  //ccuInFedEBtimeRunB[ii][jj]->Fill( CCUInFedTimesEB_runB[ii][jj]/ CCUInFedNumEntriesEB_runB[ii][jj] );
-	  ccuInFedEBtimeRunB[ii]->Fill( CCUInFedTimesEB_runB[ii][jj]/maxXtalInCCU); // CCUInFedNumEntriesEB_runB[ii][jj] );
+	  //	  ccuInFedEBtimeRunB[ii]->Fill( CCUInFedTimesEB_runB[ii][jj]/maxXtalInCCU); // CCUInFedNumEntriesEB_runB[ii][jj] );
+	  ccuInFedEBtimeRunB[ii]->Fill( (CCUInFedNumEntriesEB_runB[ii][jj]!=0) ? CCUInFedTimesEB_runB[ii][jj]/ CCUInFedNumEntriesEB_runB[ii][jj] : 0);
 	  //  }
-	  ebccutimedistrunB->Fill(CCUInFedTimesEB_runB[ii][jj]/ maxXtalInCCU);
+	  //	  ebccutimedistrunB->Fill(CCUInFedTimesEB_runB[ii][jj]/ maxXtalInCCU);
+	  ebccutimedistrunB->Fill( (CCUInFedNumEntriesEB_runB[ii][jj]!=0) ? CCUInFedTimesEB_runB[ii][jj]/ CCUInFedNumEntriesEB_runB[ii][jj] : 0);
 	}
     }
 
@@ -784,16 +798,18 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
 	  
 	  //ccuInFedEBtimeshift[ii][jj]->Fill( (CCUInFedTimesEB_runA[ii][jj]/ CCUInFedNumEntriesEB_runA[ii][jj]) - (CCUInFedTimesEB_runB[ii][jj]/ CCUInFedNumEntriesEB_runB[ii][jj]) );
 	  //ccuInFedEBtimeshift[ii]->Fill( (CCUInFedTimesEB_runA[ii][jj]/ CCUInFedNumEntriesEB_runA[ii][jj]) - (CCUInFedTimesEB_runB[ii][jj]/ CCUInFedNumEntriesEB_runB[ii][jj]) );
-	  ccuInFedEBtimeshift[ii]->Fill( (CCUInFedTimesEB_runA[ii][jj]/maxXtalInCCU ) - (CCUInFedTimesEB_runB[ii][jj]/maxXtalInCCU ) );
+	  //	  ccuInFedEBtimeshift[ii]->Fill( (CCUInFedTimesEB_runA[ii][jj]/maxXtalInCCU ) - (CCUInFedTimesEB_runB[ii][jj]/maxXtalInCCU ) );
+	    ccuInFedEBtimeshift[ii]->Fill( ((CCUInFedNumEntriesEB_runA[ii][jj]!=0) ? CCUInFedTimesEB_runA[ii][jj]/ CCUInFedNumEntriesEB_runA[ii][jj] : 0 ) - ((CCUInFedNumEntriesEB_runB[ii][jj]!=0) ? CCUInFedTimesEB_runB[ii][jj]/ CCUInFedNumEntriesEB_runB[ii][jj] : 0 ) );
 	  //ccuInFedEBtimeshift[ii][jj] = subtracthist(ccuInFedEBtimeRunA[ii][jj],ccuInFedEBtimeRunB[ii][jj] );
 	  //  }
 	  
-	  ebccutimedistshift->Fill( (CCUInFedTimesEB_runA[ii][jj]/maxXtalInCCU ) - (CCUInFedTimesEB_runB[ii][jj]/maxXtalInCCU ));
+		//	ebccutimedistshift->Fill( (CCUInFedTimesEB_runA[ii][jj]/maxXtalInCCU ) - (CCUInFedTimesEB_runB[ii][jj]/maxXtalInCCU ));
+		ebccutimedistshift->Fill(((CCUInFedNumEntriesEB_runA[ii][jj]!=0) ? CCUInFedTimesEB_runA[ii][jj]/ CCUInFedNumEntriesEB_runA[ii][jj] : 0 ) - ((CCUInFedNumEntriesEB_runB[ii][jj]!=0) ? CCUInFedTimesEB_runB[ii][jj]/ CCUInFedNumEntriesEB_runB[ii][jj] : 0 ) );
 	}
-      Savehist(ccuInFedEBtimeshift[ii]);
+	  //    Savehist(ccuInFedEBtimeshift[ii]);
     }
 
-  Savehist(ebccutimedistshift); // 1D dist of all CCUs in EB
+  // Savehist(ebccutimedistshift); // 1D dist of all CCUs in EB
  
 
   // Fill 1D hist for EEP and EEM
@@ -804,12 +820,17 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
       for( int ccu = 0; ccu < maxNumCCUInFed; ccu++)
 	{
 	  // For EEM
-	  ccuInFedEEMtimeRunA[sm]->Fill( CCUInFedTimesEEM_runA[sm][ccu]/maxXtalInCCU);     // Still   has work to do here!
-	  eemccutimedistrunA->Fill(CCUInFedTimesEEM_runA[sm][ccu]/maxXtalInCCU);
-	  // for EEP
-	  ccuInFedEEPtimeRunA[sm]->Fill( CCUInFedTimesEEP_runA[sm][ccu]/maxXtalInCCU);     // Still   has work to do here!
-	  eepccutimedistrunA->Fill(CCUInFedTimesEEP_runA[sm][ccu]/maxXtalInCCU);
+	  //	  ccuInFedEEMtimeRunA[sm]->Fill( CCUInFedTimesEEM_runA[sm][ccu]/maxXtalInCCU);     // Still   has work to do here!
+	  ccuInFedEEMtimeRunA[sm]->Fill( (CCUInFedNumEntriesEEM_runA[sm][ccu]!=0) ? CCUInFedTimesEEM_runA[sm][ccu]/ CCUInFedNumEntriesEEM_runA[sm][ccu] : 0);
 	  
+	  //	  eemccutimedistrunA->Fill(CCUInFedTimesEEM_runA[sm][ccu]/maxXtalInCCU);
+	  eemccutimedistrunA->Fill((CCUInFedNumEntriesEEM_runA[sm][ccu]!=0) ? CCUInFedTimesEEM_runA[sm][ccu]/ CCUInFedNumEntriesEEM_runA[sm][ccu] : 0);
+	  // for EEP
+	  //	  ccuInFedEEPtimeRunA[sm]->Fill( CCUInFedTimesEEP_runA[sm][ccu]/maxXtalInCCU);      // Still   has work to do here!
+	  ccuInFedEEPtimeRunA[sm]->Fill( (CCUInFedNumEntriesEEP_runB[sm][ccu]!=0) ? CCUInFedTimesEEP_runA[sm][ccu]/ CCUInFedNumEntriesEEP_runA[sm][ccu] : 0);
+	  
+	  //	  eepccutimedistrunA->Fill(CCUInFedTimesEEP_runA[sm][ccu]/maxXtalInCCU);
+	   eepccutimedistrunA->Fill((CCUInFedNumEntriesEEP_runB[sm][ccu]!=0) ? CCUInFedTimesEEP_runA[sm][ccu]/ CCUInFedNumEntriesEEP_runA[sm][ccu] : 0);
 	}
     }
 
@@ -823,11 +844,15 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
       for( int ccu = 0; ccu < maxNumCCUInFed; ccu++)
 	{
 	  // For EEM
-	  ccuInFedEEMtimeRunB[sm]->Fill( CCUInFedTimesEEM_runB[sm][ccu]/maxXtalInCCU);     // Still   has work to do here!
-	  eemccutimedistrunB->Fill(CCUInFedTimesEEM_runB[sm][ccu]/maxXtalInCCU);  // for all ccus in EEM
+	  //	  ccuInFedEEMtimeRunB[sm]->Fill( CCUInFedTimesEEM_runB[sm][ccu]/maxXtalInCCU);     // Still   has work to do here!
+	  ccuInFedEEMtimeRunB[sm]->Fill( (CCUInFedNumEntriesEEM_runB[sm][ccu]!=0) ? CCUInFedTimesEEM_runB[sm][ccu]/ CCUInFedNumEntriesEEM_runB[sm][ccu] : 0);
+	  //	  eemccutimedistrunB->Fill(CCUInFedTimesEEM_runB[sm][ccu]/maxXtalInCCU);  // for all ccus in EEM
+	  eemccutimedistrunB->Fill((CCUInFedNumEntriesEEM_runB[sm][ccu]!=0) ? CCUInFedTimesEEM_runB[sm][ccu]/CCUInFedNumEntriesEEM_runB[sm][ccu] : 0);
 	  // for EEP
-	  ccuInFedEEPtimeRunB[sm]->Fill( CCUInFedTimesEEP_runB[sm][ccu]/maxXtalInCCU);     // Still   has work to do here!
-	  eepccutimedistrunB->Fill(CCUInFedTimesEEP_runB[sm][ccu]/maxXtalInCCU); // for all CCUs in EEP
+	  //	  ccuInFedEEPtimeRunB[sm]->Fill( CCUInFedTimesEEP_runB[sm][ccu]/maxXtalInCCU);     // Still   has work to do here!
+	  ccuInFedEEPtimeRunB[sm]->Fill( (CCUInFedNumEntriesEEP_runB[sm][ccu]!=0) ? CCUInFedTimesEEP_runB[sm][ccu]/CCUInFedNumEntriesEEP_runB[sm][ccu] : 0);
+	  //	  eepccutimedistrunB->Fill(CCUInFedTimesEEP_runB[sm][ccu]/maxXtalInCCU); // for all CCUs in EEP
+	  eepccutimedistrunB->Fill((CCUInFedNumEntriesEEP_runB[sm][ccu]!=0) ? CCUInFedTimesEEP_runB[sm][ccu]/CCUInFedNumEntriesEEP_runB[sm][ccu] : 0);
 	}
       
     }
@@ -839,19 +864,24 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
       for( int ccu = 0; ccu < maxNumCCUInFed; ccu++)
 	{
 	  // For EEM
-	  ccuInFedEEMtimeshift[sm]->Fill((CCUInFedTimesEEM_runA[sm][ccu]/maxXtalInCCU) - (CCUInFedTimesEEM_runB[sm][ccu]/maxXtalInCCU));     // Still   has work to do here!
-	  eemccutimedistshift->Fill((CCUInFedTimesEEM_runA[sm][ccu]/maxXtalInCCU) - (CCUInFedTimesEEM_runB[sm][ccu]/maxXtalInCCU)); // all ccus in EEM time shift
-	  // for EEP
-	  ccuInFedEEPtimeshift[sm]->Fill((CCUInFedTimesEEP_runA[sm][ccu]/maxXtalInCCU) - (CCUInFedTimesEEP_runB[sm][ccu]/maxXtalInCCU));     // Still   has work to do here!
-	  eepccutimedistshift->Fill((CCUInFedTimesEEP_runA[sm][ccu]/maxXtalInCCU) - (CCUInFedTimesEEP_runB[sm][ccu]/maxXtalInCCU)); // all ccus in EEP time shift
+	  //	  ccuInFedEEMtimeshift[sm]->Fill((CCUInFedTimesEEM_runA[sm][ccu]/maxXtalInCCU) - (CCUInFedTimesEEM_runB[sm][ccu]/maxXtalInCCU));     // Still   has work to do here!
+	  ccuInFedEEMtimeshift[sm]->Fill(((CCUInFedNumEntriesEEM_runA[sm][ccu]!=0) ? CCUInFedTimesEEM_runA[sm][ccu]/ CCUInFedNumEntriesEEM_runA[sm][ccu] : 0) - ((CCUInFedNumEntriesEEM_runB[sm][ccu]!=0) ? CCUInFedTimesEEM_runB[sm][ccu]/ CCUInFedNumEntriesEEM_runB[sm][ccu] : 0));
+	  //	  eemccutimedistshift->Fill((CCUInFedTimesEEM_runA[sm][ccu]/maxXtalInCCU) - (CCUInFedTimesEEM_runB[sm][ccu]/maxXtalInCCU)); // all ccus in EEM time shift
+	  eemccutimedistshift->Fill(((CCUInFedNumEntriesEEM_runA[sm][ccu]!=0) ? CCUInFedTimesEEM_runA[sm][ccu]/ CCUInFedNumEntriesEEM_runA[sm][ccu] : 0) - ((CCUInFedNumEntriesEEM_runB[sm][ccu]!=0) ? CCUInFedTimesEEM_runB[sm][ccu]/ CCUInFedNumEntriesEEM_runB[sm][ccu] : 0)); 
+		  // for EEP
+		  //		  ccuInFedEEPtimeshift[sm]->Fill((CCUInFedTimesEEP_runA[sm][ccu]/maxXtalInCCU) - (CCUInFedTimesEEP_runB[sm][ccu]/maxXtalInCCU));     // Still   has work to do here!
+	  ccuInFedEEPtimeshift[sm]->Fill(((CCUInFedNumEntriesEEP_runA[sm][ccu]!=0) ? CCUInFedTimesEEP_runA[sm][ccu]/ CCUInFedNumEntriesEEP_runA[sm][ccu] : 0) - ((CCUInFedNumEntriesEEP_runB[sm][ccu]!=0) ? CCUInFedTimesEEP_runB[sm][ccu]/ CCUInFedNumEntriesEEP_runB[sm][ccu] : 0));
+	 
+	  //	  eepccutimedistshift->Fill((CCUInFedTimesEEP_runA[sm][ccu]/maxXtalInCCU) - (CCUInFedTimesEEP_runB[sm][ccu]/maxXtalInCCU)); // all ccus in EEP time shift
+	  eepccutimedistshift->Fill(((CCUInFedNumEntriesEEP_runA[sm][ccu]!=0) ? CCUInFedTimesEEP_runA[sm][ccu]/ CCUInFedNumEntriesEEP_runA[sm][ccu] : 0) - ((CCUInFedNumEntriesEEP_runB[sm][ccu]!=0) ? CCUInFedTimesEEP_runB[sm][ccu]/ CCUInFedNumEntriesEEP_runB[sm][ccu] : 0));
 	}
-      Savehist(ccuInFedEEMtimeshift[sm]);
-      Savehist(ccuInFedEEPtimeshift[sm]);
+	  //     Savehist(ccuInFedEEMtimeshift[sm]);
+	  //     Savehist(ccuInFedEEPtimeshift[sm]);
     }
 
   // 1D  dist of all CCUs in EEP and EEM
-  Savehist(eemccutimedistshift);
-  Savehist(eepccutimedistshift);
+  //  Savehist(eemccutimedistshift);
+  //  Savehist(eepccutimedistshift);
 
 
   ////// Calculate CCU Time Shifts Here!////////
@@ -861,37 +891,51 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
   CrysTimeShiftEB = SubtractTwoTProfile2D(FedAvgTimingEB,  FedAvgTimingEB_RunB);
   CrysTimeShiftEB ->SetMinimum(lbin);
   CrysTimeShiftEB->SetMaximum(hbin);
-  SaveCanvasInDir(CrysTimeShiftEB);  // don't save for now! 
+  SaveCanvasInDir(CrysTimeShiftEB); 
   // 5by5 bining
   ccutshiftEB = SubtractTwoTProfile2D(ccutimeEBrunA, ccutimeEBrunB);
   ccutshiftEB ->SetMinimum(lbin);
   ccutshiftEB->SetMaximum(hbin);
-  SaveCanvasInDir(ccutshiftEB);          // don't save for now!
+  SaveCanvasInDir(ccutshiftEB);
+  // Project 1D here!
+  EBccu1dprojection = make1dProjection(ccutshiftEB);
+  Savehist(EBccu1dprojection);
+  
   
   //EEP
   CrysTimeShiftEEP = SubtractTwoTProfile2D(FedAvgTimingEEP, FedAvgTimingEEP_RunB);
   CrysTimeShiftEEP->SetMinimum(lbin);
   CrysTimeShiftEEP->SetMaximum(hbin);
-  SaveCanvasInDir(CrysTimeShiftEEP);         // don't save for now!
+  SaveCanvasInDir(CrysTimeShiftEEP);
 
   // 5by5 bining
   ccutshiftEEP = SubtractTwoTProfile2D(ccutimeEEPrunA, ccutimeEEPrunB);
   ccutshiftEEP ->SetMinimum(lbin);
   ccutshiftEEP->SetMaximum(hbin);
-  SaveCanvasInDir(ccutshiftEEP);         // don't save  for now
+  SaveCanvasInDir(ccutshiftEEP);        
+
+
+  // Project 1D here!
+  EEPccu1dprojection = make1dProjection(ccutshiftEEP);
+  Savehist(EEPccu1dprojection);
+
   
   //EEM 
   CrysTimeShiftEEM = SubtractTwoTProfile2D(FedAvgTimingEEM, FedAvgTimingEEM_RunB);
   CrysTimeShiftEEM->SetMinimum(lbin);
   CrysTimeShiftEEM->SetMaximum(hbin);
-  SaveCanvasInDir(CrysTimeShiftEEM);    // don't save for now
+  SaveCanvasInDir(CrysTimeShiftEEM);   
   
   // 5by5 bining
   ccutshiftEEM = SubtractTwoTProfile2D(ccutimeEEMrunA, ccutimeEEMrunB);
   ccutshiftEEM ->SetMinimum(lbin);
   ccutshiftEEM->SetMaximum(hbin);
-  SaveCanvasInDir(ccutshiftEEM);           //  don't save for now!
-  
+  SaveCanvasInDir(ccutshiftEEM);           
+
+  // Project 1D here!
+  EEMccu1dprojection = make1dProjection(ccutshiftEEM);
+  Savehist(EEMccu1dprojection);
+
   
   //loop over all FED TProfile2D
   // EB
@@ -901,12 +945,12 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
       CCUTimeShiftEB[nh]->SetMinimum(lbin);
       CCUTimeShiftEB[nh]->SetMaximum(hbin);
       // Get CCUId and Time
-      //		  GetCCUIdandTimeshiftTProfileHist(CCUTimeShiftEB[nh], 0);
+      //GetCCUIdandTimeshiftTProfileHist(CCUTimeShiftEB[nh], 0);
       // GetCCUIdandTimeshiftTProfileHist(ccutshiftEB, 0);
-      //	   GetCCUIdAndTimeFromTProfileHist::
-      //	   getCCUId(GetCCUIdandTimeShift(CCUTimeShiftEB[nh], 0));
-      
-      SaveCanvasInDir( CCUTimeShiftEB[nh]);
+	 
+	  EBCCU1dprojection[nh]= make1dProjection(CCUTimeShiftEB[nh]);      // Real 1D Projection here!
+      SaveCanvasInDir(CCUTimeShiftEB[nh]);
+	  Savehist(EBCCU1dprojection[nh]);
     }
   
   //Debug issues
@@ -939,11 +983,17 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
       CCUTimeShiftEEP[eenh]= SubtractTwoTProfile2D(CCUAvgTimeEEP_RunA[eenh], CCUAvgTimeEEP_RunB[eenh], subtractAverageDifferences, false);
       CCUTimeShiftEEP[eenh]->SetMinimum(lbin);
       CCUTimeShiftEEP[eenh]->SetMaximum(hbin);
-      //GetCCUId and Time EE+
+       //GetCCUId and Time EE+
       // GetCCUIdandTimeshiftTProfileHist(CCUTimeShiftEEP[eenh], 1);
       // GetCCUIdAndTimeFromTProfileHist::
-      // getCCUId(GetCCUIdandTimeShift(CCUTimeShiftEEP[eenh], 1)); 
-      SaveCanvasInDir(CCUTimeShiftEEP[eenh]);	    
+      // getCCUId(GetCCUIdandTimeShift(CCUTimeShiftEEP[eenh], 1));
+
+
+	  EEPCCU1dprojection[eenh]= make1dProjection(CCUTimeShiftEEP[eenh]); // Real 1D Projection here!
+	  SaveCanvasInDir(CCUTimeShiftEEP[eenh]);
+	  
+	  Savehist(EEPCCU1dprojection[eenh]);
+	    
       //EE Minus   
       CCUTimeShiftEEM[eenh]= SubtractTwoTProfile2D(CCUAvgTimeEEM_RunA[eenh], CCUAvgTimeEEM_RunB[eenh], subtractAverageDifferences, false);
       
@@ -953,7 +1003,10 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
       // Get CCUId and Time EE-  //	   getCCUId.
       // GetCCUIdandTimeshiftTProfileHist(CCUTimeShiftEEM[eenh], -1);
       // getCCUId.GetCCUIdandTimeShift(CCUTimeShiftEEM[eenh], -1);
-      SaveCanvasInDir(CCUTimeShiftEEM[eenh]);   // dont save for now
+
+	  EEMCCU1dprojection[eenh]= make1dProjection(CCUTimeShiftEEM[eenh]); // Real 1D Projection here!
+      SaveCanvasInDir(CCUTimeShiftEEM[eenh]);
+	  Savehist(EEMCCU1dprojection[eenh]);
     }
   
   
@@ -964,6 +1017,7 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
   
   // Ssave Out Put Files  here!
   //savefile = new TFile("March14_LaserTiming_163291Vs163333_March14.root", "recreate");
+  
   savefile = new TFile(fileOutPutName.c_str(), "recreate");
   std::cout << "About to save histos to fole: is it accessible&open (0/1)? " <<  savefile->IsOpen() << std::endl;
 
@@ -991,7 +1045,9 @@ AdjustEcalTimingFromLaser::beginJob()
     {
       //  for( int jj = 0; jj < maxNumCCUInFed; jj++)
       //{
-      std::string ccuname = "CCU_In_Fed_Time_shift_ Dist_[ns]";
+      std::string ccuname = "CCUs In Fed Time Shift Dist[ns]EB";
+	  ccuname += ConvertIntToString(Numbers::iEB(ii+1));
+	  ccuname += " Fed ";
       ccuname += ConvertIntToString(ii + 610);
       //  ccuname += " CCU_";
       //  ccuname += ConvertIntToString(jj);
@@ -1007,7 +1063,9 @@ AdjustEcalTimingFromLaser::beginJob()
     {
       //  for( int jj = 0; jj < maxNumCCUInFed; jj++)
       //{
-      std::string ccuname = "CCU_In_Fed_Time Dist_";
+       std::string ccuname = "CCUs In Fed Time Dist[ns]EB";
+	  ccuname += ConvertIntToString(Numbers::iEB(ii+1));
+	  ccuname += " Fed ";
       ccuname += ConvertIntToString(ii + 610);
       //  ccuname += " CCU_";
       //  ccuname += ConvertIntToString(jj);
@@ -1027,7 +1085,9 @@ AdjustEcalTimingFromLaser::beginJob()
     {
       //  for( int jj = 0; jj < maxNumCCUInFed; jj++)
       //{
-      std::string ccuname = "CCU_In_Fed_Time Shitf_[ns] Dist_EB_";
+      std::string ccuname = "CCUs In Fed Time Shift Dist[ns]EB";
+	  ccuname += ConvertIntToString(Numbers::iEB(ii+1));
+	  ccuname += " Fed ";
       ccuname += ConvertIntToString(ii + 610);
       //  ccuname += "_CCU_";
       //  ccuname += ConvertIntToString(jj);
@@ -1049,13 +1109,13 @@ AdjustEcalTimingFromLaser::beginJob()
   for( int sc = 0; sc < numSC;  sc++)
     {
       //EEM
-      std::string eemscname = "CCU Time Dist[ns] Fed_";
+      std::string eemscname = "CCU Time Dist[ns] Fed ";
       eemscname  += ConvertIntToString(sc + 601);
       eemscname  +="RunA";
       ccuInFedEEMtimeRunA[sc] = new TH1F(eemscname.c_str(),eemscname.c_str(), 100, binlow, binhigh);
 
       // EEP
-      std::string eepscname ="CCU Time Dist[ns] Fed_";
+      std::string eepscname ="CCU Time Dist[ns] Fed ";
       eepscname  += ConvertIntToString(sc + 646);
       eepscname  +="RunA";
       ccuInFedEEPtimeRunA[sc] = new TH1F(eepscname.c_str(),eepscname.c_str(), 100, binlow, binhigh);
@@ -1078,13 +1138,13 @@ AdjustEcalTimingFromLaser::beginJob()
   for( int sc = 0; sc < numSC;  sc++)
     {
       //EEM
-      std::string eemscname = "CCU Time Dist[ns]EE- Fed_";
+      std::string eemscname = "CCU Time Dist[ns]EE- Fed ";
       eemscname  += ConvertIntToString(sc + 601);
       eemscname  +="RunB";
       ccuInFedEEMtimeRunB[sc] = new TH1F(eemscname.c_str(),eemscname.c_str(), 100, binlow, binhigh);
 
       // EEP
-      std::string eepscname ="CCU Time Dist[ns]EE+ Fed_";
+      std::string eepscname ="CCU Time Dist[ns]EE+ Fed ";
       eepscname  += ConvertIntToString(sc + 646);
       eepscname  +="RunB";
       ccuInFedEEPtimeRunB[sc] = new TH1F(eepscname.c_str(),eepscname.c_str(), 100, binlow, binhigh);
@@ -1096,14 +1156,14 @@ AdjustEcalTimingFromLaser::beginJob()
     {
       //EEM
       std::string eemscname = "CCU Time Shift Dist[ns]EE";
-      eemscname  +="-" + ConvertIntToString( Numbers::iEE(sc+1));
+      eemscname  += ConvertIntToString( Numbers::iEE(sc+1));
       eemscname  +="_Fed";
       eemscname  += ConvertIntToString(sc + 601);
       ccuInFedEEMtimeshift[sc] = new TH1F(eemscname.c_str(),eemscname.c_str(), 100, binlow, binhigh);
        
       // EEP
       std::string eepscname ="CCU Time Shift Dist[ns]EE";
-      eepscname  +="+" + ConvertIntToString( Numbers::iEE(sc+10));
+      eepscname  += ConvertIntToString( Numbers::iEE(sc+10));
       eepscname  +="_Fed ";
       eepscname  += ConvertIntToString(sc + 646);
       ccuInFedEEPtimeshift[sc] = new TH1F(eepscname.c_str(),eepscname.c_str(), 100, binlow, binhigh);
@@ -1122,11 +1182,14 @@ AdjustEcalTimingFromLaser::beginJob()
       //std::string fedhisttitle = "CCU Mean Time Shift[ns]EB Fed ";  // setting title like dis b/c diff uses name.
       std::string fedhisttitle = "CCU Mean Time Shift[ns]EB";  // setting title like dis b/c diff uses name.      
 
-      if(hnum < 18)
+      if(hnum <=17)
 	{
 	  //fedhistname +="EB";
 	  fedhistname1 += ConvertIntToString(( hnum + 610));
 	  fedhistname2 += ConvertIntToString(( hnum + 610));
+
+	  fedhisttitle += ConvertIntToString(Numbers::iEB(hnum+1));
+	  fedhisttitle += "_Fed ";
 	  fedhisttitle += ConvertIntToString(( hnum + 610)); // Fed hist title.
 	  fedhistname1 += ConvertIntToString(-hnum);
 	  fedhistname2 += ConvertIntToString(-hnum);
@@ -1143,7 +1206,7 @@ AdjustEcalTimingFromLaser::beginJob()
 
 	  
 	}
-      else if (hnum > 17)
+      else if (hnum >=18)
 	{
 	  // TO BE CHECKED:  the original statement was "else if" => no TProfile2d were booked for hnum>=18!
 	  // else if (hnum > 17 )
@@ -1154,7 +1217,7 @@ AdjustEcalTimingFromLaser::beginJob()
 	  fedhistname1 +=ConvertIntToString(hnum-18);
 	  
 	  fedhistname2 += ConvertIntToString(( hnum + 610));
-	  fedhistname2 +=ConvertIntToString(hnum-18);
+	  fedhistname2 +=ConvertIntToString(hnum-17);
 	  fedhisttitle += "+" + ConvertIntToString(( hnum - 17)); // Fed hist title.
 	  fedhisttitle += "_Fed_";
 	  fedhisttitle += ConvertIntToString(( hnum + 610)); // Fed Hist Title.
@@ -1203,10 +1266,12 @@ AdjustEcalTimingFromLaser::beginJob()
       //RunA
       std::string EESecname1 = "CCU_Mean_Time_EE+Fed";
       std::string EESecname2 = "CCU_Mean_Time_EE+Fed";
-      std::string fedtitle = "CCU Mean Time Shift[ns]EE+ Fed ";  // setting title like dis b/c diff uses name.
+      std::string fedtitle = "CCU Mean Time Shift[ns]EE";  // setting title like dis b/c diff uses name.
       
       EESecname1 += ConvertIntToString(eeMnum + 646);
       EESecname2 += ConvertIntToString(eeMnum + 646);
+	  fedtitle += ConvertIntToString(Numbers::iEE(eeMnum +10) );
+	  fedtitle +="_Fed ";
       fedtitle   += ConvertIntToString(eeMnum + 646);
       // For Run A
       EESecname1 +="_RunA";
@@ -1648,7 +1713,7 @@ void AdjustEcalTimingFromLaser::SaveCanvasInDir( TProfile2D* mytprof)
   
   mytprof->GetXaxis()->SetTitle("i#phi");
   mytprof->GetYaxis()->SetTitle("i#eta");
-  mytprof->Draw("colz"); // Where text happens.
+  mytprof->Draw("colztext"); // Where text happens.
   std::string filename=dirOutPutPlotsname;
   filename += mytprof->GetTitle();
   filename += ".png";
@@ -1768,7 +1833,7 @@ void AdjustEcalTimingFromLaser::GetCCUIdandTimeshiftTProfileHist(TProfile2D* myp
 
 		  std :: cout << " I can  create  DetId but ... " << std::endl;
 		  // CCUIdEB =  EcalTrigTowerDetId(iz, 1, ieta, iphi, 0);
-		  CCUIdEB =  EcalTrigTowerDetId(ebdetId);
+		  //		  CCUIdEB =  EcalTrigTowerDetId(ebdetId);
 
 		  std :: cout << " I Did not create any CCUId  " << std::endl;
 		   
@@ -1853,17 +1918,17 @@ void AdjustEcalTimingFromLaser::GetCCUIdandTimeshiftTProfileHist(TProfile2D* myp
 		  else{ std::cout << "VALID EEdetID ix: " << ix << "\t iy: " << iy << std::endl; }
 		  
 		  // Make EEDetID
-		  //EEDetId eedetIdm(ix,iy,iz,0);
-		  if(EcalScDetId::validDetId(ix,iy,iz))
-		    {
-		      CCUIdEE = EcalScDetId(ix,iy,iz);
+		 EEDetId eedetIdm(ix,iy,iz,0);
+// 		  if(EcalScDetId::validDetId(ix,iy,iz))
+// 		    {
+// 		      CCUIdEE = EcalScDetId(ix,iy,iz);
 		       
-		    } else {  std::cout << "VALID ECalSCdetID ix: " << ix << "\t iy: " << iy << std::endl; continue; // skip bad TTdetIds
-		  }
+// 		    } else {  std::cout << "VALID ECalSCdetID ix: " << ix << "\t iy: " << iy << std::endl; continue; // skip bad TTdetIds
+// 		  }
 
 		  //                   }
 		  //Continue on bad DetId
-		  //		  if(!eedetIdm.validDetId(ix,iy,iz)) continue;
+		  if(!eedetIdm.validDetId(ix,iy,iz)) continue;
 		  // skip crys with ix=iy=0
 		  //                 if(eedetIdm.ix()==0 && eedetIdm.iy()==0) continue;
 		  // if(EcalScDetId::validDetId(nx,ny,iz))
@@ -1977,6 +2042,14 @@ void AdjustEcalTimingFromLaser::writehist()
 	 CCUTimeShiftEB[m]->GetYaxis()->SetTitle("i#eta");
 	 CCUTimeShiftEB[m]->Draw("colztext");
 	 CCUTimeShiftEB[m]->Write();
+
+
+	 // Real 1D plots mAde Here!
+	 EBCCU1dprojection[m]->GetXaxis()->SetTitle("Time Shift [ns]");
+	 EBCCU1dprojection[m]->GetYaxis()->SetTitle("# CCUs in FED");
+	 EBCCU1dprojection[m]->Draw();
+	 EBCCU1dprojection[m]->Write();
+
    }
 
 
@@ -1992,6 +2065,13 @@ void AdjustEcalTimingFromLaser::writehist()
   ccutshiftEB->Draw("colz");
   ccutshiftEB->Write();
 
+   // Real 1D plots mAde Here!
+ EBccu1dprojection->GetXaxis()->SetTitle("Time Shift [ns]");
+ EBccu1dprojection->GetYaxis()->SetTitle("# CCUs in EB");
+ EBccu1dprojection->Draw();
+ EBccu1dprojection->Write();
+
+
 
   
   //Timing Shift for EE plus
@@ -2003,7 +2083,13 @@ void AdjustEcalTimingFromLaser::writehist()
       CCUTimeShiftEEP[m]->GetYaxis()->SetTitle("iy");
       CCUTimeShiftEEP[m]->Draw("colztext");
       CCUTimeShiftEEP[m]->Write();
-    }
+
+	  // Real 1D Projections Here!
+	  EEPCCU1dprojection[m]->GetXaxis()->SetTitle("Time Shift[ns]");
+	  EEPCCU1dprojection[m]->GetYaxis()->SetTitle("# CCUs In FED");
+	  EEPCCU1dprojection[m]->Draw();
+	  EEPCCU1dprojection[m]->Write();
+	}
   CrysTimeShiftEEP->GetXaxis()->SetTitle("ix");
   CrysTimeShiftEEP->GetYaxis()->SetTitle("iy");
   CrysTimeShiftEEP->Draw("colz");
@@ -2013,6 +2099,14 @@ void AdjustEcalTimingFromLaser::writehist()
   ccutshiftEEP->GetYaxis()->SetTitle("iy");
   ccutshiftEEP->Draw("colz");
   ccutshiftEEP->Write();
+
+    // Real 1D plots mAde Here!
+ EEPccu1dprojection->GetXaxis()->SetTitle("Time Shift [ns]");
+ EEPccu1dprojection->GetYaxis()->SetTitle("# CCUs in EE+");
+ EEPccu1dprojection->Draw();
+ EEPccu1dprojection->Write();
+
+
   
   // Timing Shift for EE Minus
   TDirectory* TimingShiftEEM = savefile->mkdir("TimingShiftFromLaserEEM");
@@ -2020,9 +2114,15 @@ void AdjustEcalTimingFromLaser::writehist()
   for( int m = 0; m < numSC; m++)
     {
       CCUTimeShiftEEM[m]->GetXaxis()->SetTitle("ix");
-	 CCUTimeShiftEEM[m]->GetYaxis()->SetTitle("iy");
-	 CCUTimeShiftEEM[m]->Draw("colztext");
-	 CCUTimeShiftEEM[m]->Write();
+	  CCUTimeShiftEEM[m]->GetYaxis()->SetTitle("iy");
+	  CCUTimeShiftEEM[m]->Draw("colztext");
+	  CCUTimeShiftEEM[m]->Write();
+	  
+	  // Real 1D Projections Here!
+	  EEMCCU1dprojection[m]->GetXaxis()->SetTitle("Time Shift[ns]");
+	  EEMCCU1dprojection[m]->GetYaxis()->SetTitle("# CCUs In FED");
+	  EEMCCU1dprojection[m]->Draw();
+	  EEMCCU1dprojection[m]->Write();
     }
   
   CrysTimeShiftEEM->GetXaxis()->SetTitle("ix");
@@ -2034,7 +2134,13 @@ void AdjustEcalTimingFromLaser::writehist()
   ccutshiftEEM->GetYaxis()->SetTitle("iy");
   ccutshiftEEM->Draw("colz");
   ccutshiftEEM->Write();
-  
+
+     // Real 1D plots mAde Here!
+ EEMccu1dprojection->GetXaxis()->SetTitle("Time Shift [ns]");
+ EEMccu1dprojection->GetYaxis()->SetTitle("# CCUs in EE-");
+ EEMccu1dprojection->Draw();
+ EEMccu1dprojection->Write();
+
   
   // empty folder
   //TDirectory * TestPlots = savefile->mkdir("LaserTiming");
@@ -2408,7 +2514,6 @@ ccutimeEEMrunB->GetYaxis()->SetTitle("iy");
 ccutimeEEMrunB->Draw("colz");
 ccutimeEEMrunB->Write();
 
-
 	// Run B
     EBP1Dtime_RunB->Write();
 	EBM1Dtime_RunB->Write();
@@ -2538,6 +2643,46 @@ bool AdjustEcalTimingFromLaser::isInModuleL( int binx, int biny, bool isEBPlus)
 {
   return (! isInModuleI( binx, biny, isEBPlus) );
 }
+
+
+// function to make 1Dtime dist:
+TH1F* AdjustEcalTimingFromLaser::make1dProjection(TProfile2D* hprof)
+{
+  int NXentries = hprof->GetNbinsX();
+  int NYentries = hprof->GetNbinsY();
+  //  std::string histtitle;
+  //char histname;
+  //  histtitle += "Projection of";
+  // histtitle = hprof->GetTitle();
+  // histname += '1DProjectionOf';
+  //  histname += hprof->GetName();
+  // New Entry it gets at end;
+  int Nentry = 0;
+  
+  TH1F* tproject = new TH1F(hprof->GetTitle(),hprof->GetTitle() ,20,-5.0, 5.0);
+
+  tproject->Reset();
+  for( int ix =1; ix <= NXentries; ix++)
+	{
+	  for( int iy =1; iy <= NYentries; iy++)
+		{
+
+		  int bin = hprof->GetBin(ix, iy);
+		  int entry = hprof->GetBinEntries(bin);
+		  float leur = hprof->GetBinContent(bin);
+		  float cell = hprof->GetCellContent(ix,iy);
+
+		  // now Make sure only "Real" CCUs bins are filled in 1D!
+		  if(entry==0 || cell == 0 || leur < -110){ continue;}
+		  else{tproject->Fill(leur); Nentry++;std::cout << "CCU with ix =" << ix << "\t" << " And iy =" << iy << "\t"<< "Has Time="<< leur << std::endl;}; // increment enrty for every non zero filled entry
+		  
+		}
+	}
+    hprof->ResetStats(); 
+   tproject->SetEntries(Nentry);
+  return tproject;
+}
+
 
 
 //define this as a plug-in
