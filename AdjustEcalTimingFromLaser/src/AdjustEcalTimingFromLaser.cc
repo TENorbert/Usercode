@@ -13,7 +13,7 @@
 //
 // Original Author:  Tambe_Ebai_Norber_+_Giovanni_(UMN) 
 //         Created:  Fri Mar  9 14:33:49 CET 2012
-// $Id: AdjustEcalTimingFromLaser.cc,v 1.9 2012/03/17 21:30:00 franzoni Exp $
+// $Id: AdjustEcalTimingFromLaser.cc,v 1.10 2012/03/19 10:59:00 franzoni Exp $
 //
 //
 
@@ -1716,12 +1716,9 @@ void AdjustEcalTimingFromLaser::GetCCUIdandTimeshiftTProfileHist(TProfile2D* myp
   int nxbins = myprof->GetNbinsX();
   int nybins = myprof->GetNbinsY();
 
-  std::ofstream CCUIdeb, CCUIdeep, CCUIdeem;
 
   // GF ignore txt output, for the moment. Resume later if necessary?
-  CCUIdeb.open(  (std::string("CCUId_In_EB_And_TimeShift-") + std::string(myprof->GetName() ) + std::string(".txt") ).c_str()   );
-  CCUIdeep.open(  (std::string("CCUId_In_EEP_And_TimeShift-") + std::string(myprof->GetName() ) + std::string(".txt") ).c_str()   );
-  CCUIdeem.open(  (std::string("CCUId_In_EEM_And_TimeShift-") + std::string(myprof->GetName() ) + std::string(".txt") ).c_str()   );
+
   
 
   //EB    In EB CCU == Trigger Tower
@@ -1746,10 +1743,14 @@ void AdjustEcalTimingFromLaser::GetCCUIdandTimeshiftTProfileHist(TProfile2D* myp
   // Read CCU Id and Timeshift into file 
   if (iz == 0)   // THIS IS EB
     {
+      std::ofstream CCUIdeb;
+      CCUIdeb.open(  (std::string("CCUId_In_EB_And_TimeShift-") + std::string(myprof->GetName() ) + std::string(".txt") ).c_str()   );
+      
       for( int nx = 1; nx < nxbins+1; nx++)   // iphi bin
 	{
 	  for(int ny = 1; ny <  nybins+1; ny++)  // ieta bin
 	    {
+
 	      std::cout << "GF inside the GetCCUIdandTimeshiftTProfileHist loop " << nx << "\t" << ny << std::endl;
 
 	      int bin      = myprof->GetBin(nx,ny);
@@ -1833,11 +1834,29 @@ void AdjustEcalTimingFromLaser::GetCCUIdandTimeshiftTProfileHist(TProfile2D* myp
 	  
 	}
       
-	  
-    }
+      if(CCUIdeb.is_open()){ 
+	cout << "CCUIdEB File is open write in it" <<endl;
+	// write EB CCUs
+	if(CCUIdVecEB.size()==CCUIdTimeEB.size())
+	  {
+	    for( unsigned ii = 0; ii < CCUIdVecEB.size(); ii++)
+	      {
+		CCUIdeb << CCUIdVecEB[ii] << "Has TimeShiftOf " << CCUIdTimeEB[ii] <<" (ns)"<< "\n";
+	    }
+	  }
+	std::cout << "writing to file: CCUIdVecEB done" << std::endl;
+      }
+      else                 {cout << "CCUIdEB File NOT OPEN cannot  write in it" <<endl; }
+      CCUIdeb.close();
+
+    } // end thisis EB
   
   else if (fabs(iz) == 1)
     {
+      
+      std::ofstream CCUIdee;
+      CCUIdee.open(  (std::string("CCUId_In_EE_And_TimeShift-") + std::string(myprof->GetName() ) + std::string(".txt") ).c_str()   );
+  
       
       for( int ny =1; ny < nybins+1; ny++)
 	{
@@ -1906,63 +1925,31 @@ void AdjustEcalTimingFromLaser::GetCCUIdandTimeshiftTProfileHist(TProfile2D* myp
 
 		  }		  
 		  //				}else continue; // skip Invalid DetId		 
-		} 
-	      
+		} 	      
 	}
       
       
-    } // end of filling vecs
-  
-  
-  // GF ignore txt output, for the moment. Resume later if necessary?
-  if(CCUIdeb.is_open()){ cout << "CCUIdEB File is open write in it" <<endl;}
-  else                 {cout << "CCUIdEB File NOT OPEN cannot  write in it" <<endl; }
-  
-  if(CCUIdeep.is_open()){ cout << "CCUIdEEP File is open, write" << endl;}
-  else                 {cout << "CCUIdEEP File NOT OPEN cannot  write in it" <<endl; }
-  
-  if(CCUIdeem.is_open()){cout << "CUIdEEM File is open, write" << endl;}
-  else                 {cout << "CCUIdEEM File NOT OPEN cannot  write in it" <<endl; }
-  
+      if(CCUIdee.is_open()){ 
+	cout << "CCUIdEEP File is open, write" << endl;
+	
+	//Write EEP CCUs
+	if(CCUIdVecEEP.size()==CCUIdTimeEEP.size())
+	  {
+	    for( unsigned ii = 0; ii < CCUIdVecEEP.size(); ii++)
+	      {
+		CCUIdee << CCUIdVecEEP[ii] << "Has TimeShiftOf " << CCUIdTimeEEP[ii] <<" (ns)"<< "\n";
+	      }
+	  }
+	std::cout << "writing to file: CCUIdVecEEP done" << std::endl;
+	
+      }
+      else                 {cout << "CCUIdEEP File NOT OPEN cannot  write in it" <<endl; }      
+      CCUIdee.close();
+      
 
+    } // end of filling vecs for EE
 
-  
-  // write EB CCUs
-  if(CCUIdVecEB.size()==CCUIdTimeEB.size())
-    {
-      for( unsigned ii = 0; ii < CCUIdVecEB.size(); ii++)
-	{
-	  CCUIdeb << CCUIdVecEB[ii] << "Has TimeShiftOf " << CCUIdTimeEB[ii] <<" (ns)"<< "\n";
-	}
-    }
-  std::cout << "writing to file: CCUIdVecEB done" << std::endl;
-  
-  //Write EEP CCUs
-  if(CCUIdVecEEP.size()==CCUIdTimeEEP.size())
-    {
-      for( unsigned ii = 0; ii < CCUIdVecEEP.size(); ii++)
-	{
-	  CCUIdeep << CCUIdVecEEP[ii] << "Has TimeShiftOf " << CCUIdTimeEEP[ii] <<" (ns)"<< "\n";
-	}
-    }
-  std::cout << "writing to file: CCUIdVecEEP done" << std::endl;
-  
-  //EEMinus
-  if(CCUIdVecEEM.size()==CCUIdTimeEEM.size())
-    {
-      for( unsigned ii = 0; ii < CCUIdVecEEM.size(); ii++)
-	{
-	  CCUIdeem << CCUIdVecEEM[ii] << "Has TimeShift Of " << CCUIdTimeEEM[ii] <<" (ns)"<< "\n";
-	}
-    }
-  std::cout << "writing to file: CCUIdVecEEM done" << std::endl;
-
-  
-  cout << " CLose all files now" << endl;
-  
-  CCUIdeb.close();
-  CCUIdeep.close();
-  CCUIdeem.close();
+  std::cout << "++ writing to file: CCUIdVecEEM done" << std::endl;
   
 } // end of fxn to GetCCUId and TimeShift.
 
