@@ -13,7 +13,7 @@
 //
 // Original Author:  Tambe_Ebai_Norber_+_Giovanni_(UMN) 
 //         Created:  Fri Mar  9 14:33:49 CET 2012
-// $Id: AdjustEcalTimingFromLaser.cc,v 1.12 2012/03/19 18:21:41 franzoni Exp $
+// $Id: AdjustEcalTimingFromLaser.cc,v 1.13 2012/03/19 22:03:36 franzoni Exp $
 //
 //
 
@@ -1240,11 +1240,13 @@ AdjustEcalTimingFromLaser::beginJob()
       //fedhistname +=ConvertIntToString(-hnum);
       //For Run A
       fedhistname1 += "_RunA";
-      CCUAvgTimeEEM_RunA[eeMnum] = new TProfile2D(fedhistname1.c_str(),fedhtitle.c_str(),20,0.0,100,20,0.,100);
+      CCUAvgTimeEEM_RunA[eeMnum] = new TProfile2D(fedhistname1.c_str(),fedhtitle.c_str(),20,0.0,100,20,0.,100); // GF!
+      //CCUAvgTimeEEM_RunA[eeMnum] = new TProfile2D(fedhistname1.c_str(),fedhtitle.c_str(),20,1.,101,20,1.,101.);
 
       // For Run B
       fedhistname2 += "_RunB";
-      CCUAvgTimeEEM_RunB[eeMnum] = new TProfile2D(fedhistname2.c_str(),fedhistname2.c_str(),20,0.,100,20,0.,100);
+      CCUAvgTimeEEM_RunB[eeMnum] = new TProfile2D(fedhistname2.c_str(),fedhistname2.c_str(),20,0.,100,20,0.,100); // GF!
+      //CCUAvgTimeEEM_RunB[eeMnum] = new TProfile2D(fedhistname2.c_str(),fedhistname2.c_str(),20,1.,101,20,1.,101.);
       
       // EE Plus
       //RunA
@@ -1861,8 +1863,8 @@ void AdjustEcalTimingFromLaser::GetCCUIdandTimeshiftTProfileHist(TProfile2D* myp
 		  if ( tshift < (timeValueNoData+1)) continue;
 
 		  // create a 'representative' crystal within the bin
-		  int ix = myprof->GetXaxis()->GetBinLowEdge(nx);
-		  int iy = myprof->GetYaxis()->GetBinLowEdge(ny);
+		  int ix = myprof->GetXaxis()->GetBinLowEdge(nx)+1;
+		  int iy = myprof->GetYaxis()->GetBinLowEdge(ny)+1;
 		  
 		  // skip Bad ix and iy values:
 		  if(ix < 1 || ix > 100 || iy < 1 || iy > 100) continue;
