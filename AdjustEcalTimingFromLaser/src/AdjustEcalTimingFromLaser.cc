@@ -13,7 +13,7 @@
 //
 // Original Author:  Tambe_Ebai_Norber_+_Giovanni_(UMN) 
 //         Created:  Fri Mar  9 14:33:49 CET 2012
-// $Id: AdjustEcalTimingFromLaser.cc,v 1.8 2012/03/17 20:34:08 franzoni Exp $
+// $Id: AdjustEcalTimingFromLaser.cc,v 1.9 2012/03/17 21:30:00 franzoni Exp $
 //
 //
 
@@ -55,6 +55,10 @@
 // include laser ntuple format structo
 #include "ECALTime/AdjustEcalTimingFromLaser/interface/ntupleLaser.h"
 #include "ECALTime/AdjustEcalTimingFromLaser/interface/functionsLaserTime.h"
+
+//db related stuff
+#include "OnlineDB/EcalCondDB/interface/EcalCondDBInterface.h"
+
 
 //
 // some pre-processor statements
@@ -284,6 +288,12 @@ private:
   TH1F* EBP1Dtime_RunB;
   TH1F* EBM1Dtime_RunB;
    
+  // arrays to accumulate absolute delays as they stand from db
+  int feDelaysFromDBEB[EBDetId::MAX_SM][EcalTrigTowerDetId::kEBTowersPerSM+2];
+  int feDelaysFromDBEE[maxEEsm][EcalTrigTowerDetId::kEBTowersPerSM+2];
+
+  bool doHwSetFromDb;
+
 };
 
 //
@@ -304,6 +314,7 @@ AdjustEcalTimingFromLaser::AdjustEcalTimingFromLaser(const edm::ParameterSet& iC
   dirOutPutPlotsname ( iConfig.getParameter<std::string>("dirOutPutPlotsname") ) ,
   fileOutPutName ( iConfig.getParameter<std::string>("fileOutPutName") ) ,
   subtractAverageDifferences  ( iConfig.getParameter<bool>("subtractAverageDifferences") ) ,
+  doHwSetFromDb ( iConfig.getParameter<bool>("doHwSetFromDb") ) ,
   NWLtmp  ( iConfig.getParameter<int>("NWL") ) ,
   binlow  ( iConfig.getParameter<double>("binlow") ) ,
   binhigh ( iConfig.getParameter<double>("binhigh") ) ,
@@ -947,37 +958,15 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
       CCUTimeShiftEB[nh]= SubtractTwoTProfile2D(CCUAvgTimeEB_RunA[nh], CCUAvgTimeEB_RunB[nh], subtractAverageDifferences, true);
       CCUTimeShiftEB[nh]->SetMinimum(lbin);
       CCUTimeShiftEB[nh]->SetMaximum(hbin);
-      // Get CCUId and Time
-      //GetCCUIdandTimeshiftTProfileHist(CCUTimeShiftEB[nh], 0);
-      // GetCCUIdandTimeshiftTProfileHist(ccutshiftEB, 0);
+
+      // Get CCUId and Time for EB
+      GetCCUIdandTimeshiftTProfileHist(CCUTimeShiftEB[nh], 0);
       
       EBCCU1dprojection[nh]= make1dProjection(CCUTimeShiftEB[nh]);      // Real 1D Projection here!
       SaveCanvasInDir(CCUTimeShiftEB[nh]);
-	  Savehist(EBCCU1dprojection[nh]);
+      Savehist(EBCCU1dprojection[nh]);
+
     }
-  
-  //Debug issues
-  //        int binA = CCUAvgTimeEB_RunA[0]->GetBin(4,17);
-  //        float binvalueA = CCUAvgTimeEB_RunA[0]->GetBinContent(binA);
-  // 	   int  binEntryA =  CCUAvgTimeEB_RunA[0]->GetBinEntries(binA);
-  
-  // 	   int binB = CCUAvgTimeEB_RunB[0]->GetBin(4,17);
-  // 	   float binvalueB = CCUAvgTimeEB_RunB[0]->GetBinContent(binB);
-  // 	   int  binEntryB =  CCUAvgTimeEB_RunB[0]->GetBinEntries(binB);
-  
-  // 	   int bind = CCUTimeShiftEB[0]->GetBin(4,17);
-  // 	   float binvalue = CCUTimeShiftEB[0]->GetBinContent(bind);
-  // 	   int  binEntry   =  CCUTimeShiftEB[0]->GetBinEntries(bind);
-  
-  
-  
-  //    cout << "RunA has Entries=" << binEntryA << " With Time=" <<  binvalueA << endl;
-  //    cout << "RunB has Entries=" << binEntryB << " With Time=" <<  binvalueB << endl;
-  
-  
-  //    cout << "Diff In Run  has Entries=" << binEntry << " With Time=" <<  binvalue << endl;
-  
-  
   
   //EE
   for ( int eenh = 0; eenh < numSC; eenh++)
@@ -986,17 +975,17 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
       CCUTimeShiftEEP[eenh]= SubtractTwoTProfile2D(CCUAvgTimeEEP_RunA[eenh], CCUAvgTimeEEP_RunB[eenh], subtractAverageDifferences, false);
       CCUTimeShiftEEP[eenh]->SetMinimum(lbin);
       CCUTimeShiftEEP[eenh]->SetMaximum(hbin);
-       //GetCCUId and Time EE+
-      // GetCCUIdandTimeshiftTProfileHist(CCUTimeShiftEEP[eenh], 1);
-      // GetCCUIdAndTimeFromTProfileHist::
-      // getCCUId(GetCCUIdandTimeShift(CCUTimeShiftEEP[eenh], 1));
+      //GetCCUId and Time EE+
+      std::cout << "GF just before calling EEP GetCCUIdandTimeshiftTProfileHist to operate over: " << CCUTimeShiftEEP[eenh]->GetName() << std::endl;
+      GetCCUIdandTimeshiftTProfileHist(CCUTimeShiftEEP[eenh], 1);
+      std::cout << "GF just AFTER calling EEP GetCCUIdandTimeshiftTProfileHist to operate over: " << CCUTimeShiftEEP[eenh]->GetName() << std::endl;      
 
+      
+      EEPCCU1dprojection[eenh]= make1dProjection(CCUTimeShiftEEP[eenh]); // Real 1D Projection here!
 
-	  EEPCCU1dprojection[eenh]= make1dProjection(CCUTimeShiftEEP[eenh]); // Real 1D Projection here!
-	  SaveCanvasInDir(CCUTimeShiftEEP[eenh]);
-	  
-	  Savehist(EEPCCU1dprojection[eenh]);
-	    
+      SaveCanvasInDir(CCUTimeShiftEEP[eenh]);
+      Savehist(EEPCCU1dprojection[eenh]);
+      
       //EE Minus   
       CCUTimeShiftEEM[eenh]= SubtractTwoTProfile2D(CCUAvgTimeEEM_RunA[eenh], CCUAvgTimeEEM_RunB[eenh], subtractAverageDifferences, false);
       
@@ -1004,31 +993,41 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
       CCUTimeShiftEEM[eenh]->SetMaximum(hbin);
       
       // Get CCUId and Time EE-  //	   getCCUId.
-      // GetCCUIdandTimeshiftTProfileHist(CCUTimeShiftEEM[eenh], -1);
-      // getCCUId.GetCCUIdandTimeShift(CCUTimeShiftEEM[eenh], -1);
+      std::cout << "GF just before calling EEM GetCCUIdandTimeshiftTProfileHist to operate over: " << CCUTimeShiftEEM[eenh]->GetName() << std::endl;
+      GetCCUIdandTimeshiftTProfileHist(CCUTimeShiftEEM[eenh], -1);
+      std::cout << "GF just AFTER calling EEM GetCCUIdandTimeshiftTProfileHist to operate over: " << CCUTimeShiftEEM[eenh]->GetName() << std::endl;
 
-	  EEMCCU1dprojection[eenh]= make1dProjection(CCUTimeShiftEEM[eenh]); // Real 1D Projection here!
+
+      EEMCCU1dprojection[eenh]= make1dProjection(CCUTimeShiftEEM[eenh]); // Real 1D Projection here!
       SaveCanvasInDir(CCUTimeShiftEEM[eenh]);
-	  Savehist(EEMCCU1dprojection[eenh]);
+      Savehist(EEMCCU1dprojection[eenh]);
     }
   
-  
+  // GF: why launching on the whole EB // EE if code not instrumented for that?
   // Add function to Map TimeShift to CCUId  Here!
   //GetCCUIdandTimeshiftTProfileHist(ccutshiftEB, 0);
   //GetCCUIdandTimeshiftTProfileHist(ccutshiftEEP, 1);
   //GetCCUIdandTimeshiftTProfileHist(ccutshiftEEM, -1);
   
-  // Ssave Out Put Files  here!
-  //savefile = new TFile("March14_LaserTiming_163291Vs163333_March14.root", "recreate");
   
   savefile = new TFile(fileOutPutName.c_str(), "recreate");
   std::cout << "About to save histos to fole: is it accessible&open (0/1)? " <<  savefile->IsOpen() << std::endl;
-
   std::cout << "is file open, just before writing in it? " <<  savefile->IsOpen() << std::endl;
-  writehist();
-  
+  writehist();  
   cout << " Histograms Saved, closing file." << endl;
   savefile->Close();
+
+  std::cout << "\t doHwSetFromDb is: " << doHwSetFromDb
+	    << "\t subtractAverageDifferences: " << subtractAverageDifferences << std::endl;
+
+  if(doHwSetFromDb) 
+    {
+      std::cout << "\n\n++ at end of analyze - doing db query + xml stuff "<<  std::endl;  
+      readHwSettingsFromDb();
+      makeXmlFiles();
+    }
+
+
 
 }// end of analyze...
 
@@ -1345,9 +1344,6 @@ AdjustEcalTimingFromLaser::beginJob()
 void 
 AdjustEcalTimingFromLaser::endJob() 
 {
-  //cout << " Save Histograms" << endl;
-  //savefile->Close();
-  std::cout << "\n\n++ djustEcalTimingFromLaser::endJob "<<  std::endl;
 }
 
 // ------------ method called when starting to processes a run  ------------
@@ -1521,7 +1517,7 @@ AdjustEcalTimingFromLaser::SubtractTwoTProfile2D( TProfile2D* hprof_runA, TProfi
   int nybinsB = hprof_runB->GetNbinsY();  
   
   // Define New Histogram to hold CCU Time Shift
-  TProfile2D *result_hprof =(TProfile2D*)hprof_runA->Clone("CCUMeanTimeShifthprof");
+  TProfile2D *result_hprof =(TProfile2D*)hprof_runA->Clone(  (std::string("TimeShift-") + std::string( hprof_runA->GetName() ) ).c_str() );
   result_hprof->Reset();
   
   // loop over bins of both hists: if sizes don't match, compain and bail out
@@ -1721,52 +1717,50 @@ void AdjustEcalTimingFromLaser::GetCCUIdandTimeshiftTProfileHist(TProfile2D* myp
   int nybins = myprof->GetNbinsY();
 
   std::ofstream CCUIdeb, CCUIdeep, CCUIdeem;
-  std::cout << "gf just before opening file" << std::endl;
-  //CCUIdeb.open("CCUId_In_EB_And_TimeShift.txt",fstream::in | fstream::out);
-  CCUIdeb.open("CCUId_In_EB_And_TimeShift.txt");
 
-  //CCUIdeep.open("CCUId_In_EEPlus_And_TimeShift.txt",fstream::in | fstream::out);
-  CCUIdeep.open("CCUId_In_EEPlus_And_TimeShift.txt");
-
-  //CCUIdeem.open("CCUId_In_EEMinus_And_TimeShift.txt",fstream::in | fstream::out);
-  CCUIdeem.open("CCUId_In_EEMinus_And_TimeShift.txt");
-  std::cout << "gf just after opening file" << std::endl;
+  // GF ignore txt output, for the moment. Resume later if necessary?
+  CCUIdeb.open(  (std::string("CCUId_In_EB_And_TimeShift-") + std::string(myprof->GetName() ) + std::string(".txt") ).c_str()   );
+  CCUIdeep.open(  (std::string("CCUId_In_EEP_And_TimeShift-") + std::string(myprof->GetName() ) + std::string(".txt") ).c_str()   );
+  CCUIdeem.open(  (std::string("CCUId_In_EEM_And_TimeShift-") + std::string(myprof->GetName() ) + std::string(".txt") ).c_str()   );
   
 
   //EB    In EB CCU == Trigger Tower
-  std::vector<int> CCUIdVecEB;
+  std::vector<int>   CCUIdVecEB;
   std::vector<float> CCUIdTimeEB;
 
   // EE Plus  // CCU seen as SuperCrystal in EE..Not as Trigger Tower As Normally done!
-  std::vector<int> CCUIdVecEEP;
+  std::vector<int>   CCUIdVecEEP;
   std::vector<float> CCUIdTimeEEP;
   //EE Minus
-  std::vector<int> CCUIdVecEEM;
+  std::vector<int>   CCUIdVecEEM;
   std::vector<float> CCUIdTimeEEM;
   //EB
   EBDetId ebdetId;
   //EE
   EEDetId eedetIdm;
 
-  int CCUIdEB = 0; // initialise Variables for safety
+  int CCUIdEB = 0;
   int CCUIdEE = 0;
   
+  std::cout << "GF just BEFORE LOOP iz: " << iz << " name: " << myprof->GetName()  << std::endl;
   // Read CCU Id and Timeshift into file 
-  if (iz == 0) 
+  if (iz == 0)   // THIS IS EB
     {
-      
       for( int nx = 1; nx < nxbins+1; nx++)   // iphi bin
 	{
 	  for(int ny = 1; ny <  nybins+1; ny++)  // ieta bin
 	    {
-	      int bin = myprof->GetBin(nx,ny);
-	      
+	      std::cout << "GF inside the GetCCUIdandTimeshiftTProfileHist loop " << nx << "\t" << ny << std::endl;
+
+	      int bin      = myprof->GetBin(nx,ny);
 	      int nentries = myprof->GetBinEntries(bin);
-	      
-	      int tshift = 0; // initialise the time to zero
+	      int tshift   = 0; // initialise the time to zero
 	      
 	      // Set timing shift for CCUs with no entries == 0
-	      if( nentries == 0){ tshift = 0;} else { tshift = myprof->GetBinContent(bin);};
+	      if( nentries == 0)
+		{ tshift = 0;} 
+	      else 
+		{ tshift = myprof->GetBinContent(bin);};
 	      
 	      //// @ la SIC
 	      //int ietaAbs = (ny < 18) ? 18 - ny : ny - 17;
@@ -1775,13 +1769,11 @@ void AdjustEcalTimingFromLaser::GetCCUIdandTimeshiftTProfileHist(TProfile2D* myp
 	      //int Ieta    = zside*(ietaAbs*5 -2);
 	      //int Iphi    =  iPhi*5 - 2;
 	      
-	      int ieta = myprof->GetYaxis()->GetBinLowEdge(ny);  // Need to do some work here!
-	      
-	      //  int Ieta = ieta; //   zside*ieta;
+	      int ieta = myprof->GetYaxis()->GetBinLowEdge(ny);
 	      int iphi = myprof->GetXaxis()->GetBinLowEdge(nx);
 	      
 	      
-	      cout << "Gloobal Bin " << bin << " has entries " << nentries << " and bin number nx, ny = " << nx << ", " << ny << "\t and ieta, iphi = " << ieta << ", " << iphi << endl;
+	      cout << "ten inside GetCCUIdandTimeshiftTProfileHist : Gloobal Bin " << bin << " has entries " << nentries << " and bin number nx, ny = " << nx << ", " << ny << "\t and ieta, iphi = " << ieta << ", " << iphi << endl;
 	      // if(EcalTrigTowerDetId::validDetId(iz,eb,nx,ny))
 	      
 	      //  ttId = EcalTrigTowerDetId(iz,eb,nx,ny);
@@ -1797,14 +1789,16 @@ void AdjustEcalTimingFromLaser::GetCCUIdandTimeshiftTProfileHist(TProfile2D* myp
 	      // first check if DetId is valid and skip if invalid
 	      
 	      //                   EBDetId::validDetId(ieta,iphi);
-	      if( !EBDetId::validDetId(ieta,iphi) ) { std::cout << "invalid EBdetID ieta: " << ieta << "\t iphi: " << iphi << std::endl;  continue; }
-	      else{ std::cout << "VALID EBdetID ieta: " << ieta << "\t iphi: " << iphi << std::endl; }
+	      if( !EBDetId::validDetId(ieta,iphi) ) 
+		{ std::cout << "invalid EBdetID ieta: " << ieta << "\t iphi: " << iphi << std::endl;  continue; }
+	      else
+		{ std::cout << "VALID EBdetID ieta: " << ieta << "\t iphi: " << iphi << std::endl; }
 
 
 	      // if ((ieta== 1 || iphi==1)){std::cout << " why?  ieta ==1 and iph ==1 is messed up" << std::endl;continue;}
 	      //  else {
 
-	      std::cout << " I am Happy up till here!" << std::endl;	      
+	      //	      std::cout << " I am Happy up till here!" << std::endl;	      
 
 	      // Create DetId
 	      EBDetId ebdetId(ieta,iphi);
@@ -1813,7 +1807,7 @@ void AdjustEcalTimingFromLaser::GetCCUIdandTimeshiftTProfileHist(TProfile2D* myp
 	      // check valid TTId
 	      // if(EcalTrigTowerDetId::validDetId(iz,1,ieta, iphi))
 
-	      std::cout << " I am might be happy here " << std:: endl;
+	      //std::cout << " I am might be happy here " << std:: endl;
 	      if(EBDetId::validDetId(ieta, iphi))
 		{
 
@@ -1826,48 +1820,14 @@ void AdjustEcalTimingFromLaser::GetCCUIdandTimeshiftTProfileHist(TProfile2D* myp
 		} else {  std::cout << "VALID ECalTTdetID ieta: " << ieta << "\t iphi: " << iphi << std::endl; continue; // skip bad TTdetIds
 	      }
 
-	      //      }
-	      // remove ieta=iphi=0 xtal
-	      //   if(ebdetId.ieta()==0 && ebdetId.iphi()==0) continue;
-	      // remove ieta > 85 or ieta < -85
-	      //   if(ebdetId.ieta() < -85 || ebdetId.ieta() > 85) continue;  
-	      // remove iphi > 0 or iphi < 361
-	      //   if(ebdetId.iphi()  < 1 || ebdetId.iphi() > 360 ) continue;       
-	      
-	      // Debuggin issues
-	      //		  int eta = ebdetId.ietaSM();
-	      //		  int phi = ebdetId.iphiSM();
-	      
-	      // Check if EBDetId is Valid
-	      //			  if(ebdetId.validDetId(Ieta, Iphi)){
-	      //			cout << " The EBDetID is " << ebdetId <<" has eta: "<< eta << " and Has Phi: "<< phi << endl;};
-	      // Use DetId to Get Electronics ID
-	      //			  const EcalElectronicsId eid = elecIdmapping.getElectronicsId(ebdetId);
-	      //Numbers::map->getElectronicsId(ebdetId);
-	      // From electronics Id Get CCUId
-	      //			  int  CCUId = eid.towerId();
-
 	      // Get SM?//
 	      int iSM = Numbers::iSM(ebdetId);
 	      // which TT/SC?
 	      CCUIdEB = Numbers::iSC(iSM,EcalBarrel,ebdetId.ietaSM(),ebdetId.iphiSM());
 	      
-	      
-	      // 			  // Make TT Id
-	      // 			  EcalTrigTowerDetId ttId(CCUId);
-	      
-	      // 			  //Get SM from TTId
-	      // 			  unsigned iSM = Numbers::SM(ttId)
-	      
-	      //Check if ebdetId is valid. But I really have to check if CCUId is Valid though. sighhhh!
-	      //				if(ebdetId.validDetId(Ieta,Iphi))
-	      //				  {				 
-	      //			  if(ttId.validDetId(0,1,ieta,iphi))
-	      //				{
-	      //					CCUIdVecEB.push_back(ttId);
 	      CCUIdVecEB.push_back(CCUIdEB);	
 	      CCUIdTimeEB.push_back(tshift);
-	      //				  } else continue; // continue on Invalid detId
+
 	    }			 
 	  
 	  
@@ -1951,16 +1911,16 @@ void AdjustEcalTimingFromLaser::GetCCUIdandTimeshiftTProfileHist(TProfile2D* myp
 	}
       
       
-	} // end of filling vecs
+    } // end of filling vecs
   
   
-  
+  // GF ignore txt output, for the moment. Resume later if necessary?
   if(CCUIdeb.is_open()){ cout << "CCUIdEB File is open write in it" <<endl;}
   else                 {cout << "CCUIdEB File NOT OPEN cannot  write in it" <<endl; }
-
+  
   if(CCUIdeep.is_open()){ cout << "CCUIdEEP File is open, write" << endl;}
   else                 {cout << "CCUIdEEP File NOT OPEN cannot  write in it" <<endl; }
-
+  
   if(CCUIdeem.is_open()){cout << "CUIdEEM File is open, write" << endl;}
   else                 {cout << "CCUIdEEM File NOT OPEN cannot  write in it" <<endl; }
   
@@ -1970,7 +1930,7 @@ void AdjustEcalTimingFromLaser::GetCCUIdandTimeshiftTProfileHist(TProfile2D* myp
   // write EB CCUs
   if(CCUIdVecEB.size()==CCUIdTimeEB.size())
     {
-      for( unsigned ii = 0; ii <= CCUIdVecEB.size(); ii++)
+      for( unsigned ii = 0; ii < CCUIdVecEB.size(); ii++)
 	{
 	  CCUIdeb << CCUIdVecEB[ii] << "Has TimeShiftOf " << CCUIdTimeEB[ii] <<" (ns)"<< "\n";
 	}
@@ -2570,9 +2530,7 @@ void AdjustEcalTimingFromLaser::Savehist(TH1F* myhist)
 }
 
 
-
 //////&&&&&&&&& Funtion to Substract  1D Hists &&&&&&&&&&&&&&&&/////////////////
-
 TH1F* AdjustEcalTimingFromLaser::subtracthist( TH1F* hprof_runA, TH1F* hprof_runB)
 {
   if(!hprof_runA){cout << "No input histograms was put" << endl;}
@@ -2616,28 +2574,26 @@ TH1F* AdjustEcalTimingFromLaser::subtracthist( TH1F* hprof_runA, TH1F* hprof_run
 
 void AdjustEcalTimingFromLaser::readHwSettingsFromDb()
 {
-  /*
 
   // now read the DB and get the absolute delays
-  int feDelaysFromDBEB[EBDetId::MAX_SM][maxNumCCUinFed];
-  int feDelaysFromDBEE[numEEsm][maxNumCCUinFed];
+
+  // initialize arrays to hold the original hw settings
   for(int i=0; i<EBDetId::MAX_SM; ++i)
-  {
-  for(int j=0; j<maxNumCCUinFed; ++j)
-  {
-  feDelaysFromDBEB[i][j] = -999999;
-  }
-  }
-  for(int i=0; i<numEEsm; ++i)
-  {
-  for(int j=0; j<maxNumCCUinFed; ++j)
-  {
-  feDelaysFromDBEE[i][j] = -999999;
-  }
-  }
+    {
+      for(int j=0; j< (EcalTrigTowerDetId::kEBTowersPerSM+2); ++j)
+	{
+	  feDelaysFromDBEB[i][j] = -999999;
+	}
+    }
+  for(int i=0; i<maxEEsm; ++i)
+    {
+      for(int j=0; j< (EcalTrigTowerDetId::kEBTowersPerSM+2); ++j)
+	{
+	  feDelaysFromDBEE[i][j] = -999999;
+	}
+    }
+
   
-  if(readDelaysFromDB_)
-  {
   string sid;
   string user;
   string pass;
@@ -2647,69 +2603,77 @@ void AdjustEcalTimingFromLaser::readHwSettingsFromDb()
   std::cin >> user;
   std::cout << "Please enter password: ";
   std::cin >> pass;
-    EcalCondDBInterface* econn;
+  EcalCondDBInterface* econn;
+  try {
     try {
-    try {
-    cout << "Making DB connection..." << flush;
-    econn = new EcalCondDBInterface( sid, user, pass );
-    cout << "Done." << endl;
-    } catch (runtime_error &e) {
-    cerr << e.what() << endl;
-    exit(-1);
+      cout << "Making DB connection..." << flush;
+      econn = new EcalCondDBInterface( sid, user, pass );
+      cout << "Done." << endl;
+	} catch (runtime_error &e) {
+      cerr << e.what() << endl;
+      exit(-1);
     }
-    RunIOV iov = econn->fetchRunIOV("P5_Co", runNum);
+    
+    // for SIC, run was only one and determined by DQM file; in this case, chose runA
+    //RunIOV iov = econn->fetchRunIOV("P5_Co", runNum);
+    RunIOV iov = econn->fetchRunIOV("P5_Co", RunB4TS);
+    
     std::list<ODDelaysDat> delays = econn->fetchFEDelaysForRun(&iov);
     std::list<ODDelaysDat>::const_iterator i = delays.begin();
     std::list<ODDelaysDat>::const_iterator e = delays.end();
     while (i != e)
-    {
-    int idcc = i->getFedId()-600;
-    int ism = 0;
-    if(idcc >= 1 && idcc <= 9)        // EEM
-	    ism = idcc;
-	    else if(idcc >= 10 && idcc <= 45) // EB
-	    ism = idcc-9;
-	    else if(idcc >= 46 && idcc <= 54) // EEP
-	    ism = idcc-45+9;
-	    else
-	    std::cout << "warning: strange iDCC read from db: " << idcc << ". " << std::endl;
-	    
-	    int ccuId = i->getTTId();
-	    if(idcc >= 10 && idcc <= 45) // EB
-	    {
+      {
+	int idcc = i->getFedId()-600;
+	int ism = 0;
+	if(idcc >= 1 && idcc <= 9)        // EEM
+	  ism = idcc;
+	else if(idcc >= 10 && idcc <= 45) // EB
+	  ism = idcc-9;
+	else if(idcc >= 46 && idcc <= 54) // EEP
+	  ism = idcc-45+9;
+	else
+	  std::cout << "warning: strange iDCC read from db: " << idcc << ". " << std::endl;
+	
+	int ccuId = i->getTTId();
+	
+	std::cout << "idcc: " << idcc << " ism: " << ism << " ccuId: " << ccuId << " offset: " << i->getTimeOffset() << std::endl;
+	
+	if(idcc >= 10 && idcc <= 45) // EB
+	  {
 	    if(feDelaysFromDBEB[ism-1][ccuId-1] != -999999)
-	    std::cout << "warning: duplicate entry in DB found for fed: " << idcc+600
-	    << " CCU: " << ccuId << "; replacing old entry with this one." << std::endl;
+	      std::cout << "warning: duplicate entry in DB found for fed: " << idcc+600
+			<< " CCU: " << ccuId << "; replacing old entry with this one." << std::endl;
 	    feDelaysFromDBEB[ism-1][ccuId-1] = i->getTimeOffset();
-	    }
-	    else if( (idcc >= 1 && idcc <= 9) || (idcc >= 46 && idcc <= 54)) // EE
-	    {
+	      }
+	else if( (idcc >= 1 && idcc <= 9) || (idcc >= 46 && idcc <= 54)) // EE
+	  {
 	    if(feDelaysFromDBEE[ism-1][ccuId-1] != -999999)
-	    std::cout << "warning: duplicate entry in DB found for fed: " << idcc+600
-	    << " CCU: " << ccuId << "; replacing old entry with this one." << std::endl;
+	      std::cout << "warning: duplicate entry in DB found for fed: " << idcc+600
+			<< " CCU: " << ccuId << "; replacing old entry with this one." << std::endl;
 	    feDelaysFromDBEE[ism-1][ccuId-1] = i->getTimeOffset();
-	    }
-	    
-	    i++;
-	    }
-	    } catch (exception &e) {
-	    cout << "ERROR:  " << e.what() << endl;
-	    } catch (...) {
-	    cout << "Unknown error caught" << endl;
-	    }
-	    std::cout << "ECAL hardware latency settings retrieved from db for run: " << runNum << std::endl; 
-	    }
-  */
-  ;  
+	  }
+	
+	i++;
+      }
+      } catch (exception &e) {
+    cout << "ERROR:  " << e.what() << endl;
+      } catch (...) {
+    cout << "Unknown error caught" << endl;
+  }
+
+  std::cout << "\n\n===> ECAL hardware latency settings retrieved from db for RunB4TS: " << RunB4TS 
+	    << " \n(have made sure that they're the same as RunAFTS : " << RunAFTS << "?)" 
+	    << std::endl; 
+
 }
+
+
 	    
 
 
 void AdjustEcalTimingFromLaser::makeXmlFiles()
 {
-  ;
-
-  // get 
+  std::cout << "making xml files" << std::endl;;
 }
 
 
@@ -2764,8 +2728,8 @@ TH1F* AdjustEcalTimingFromLaser::make1dProjection(TProfile2D* hprof)
 		  
 		}
 	}
-    hprof->ResetStats(); 
-   tproject->SetEntries(Nentry);
+  hprof->ResetStats(); 
+  tproject->SetEntries(Nentry);
   return tproject;
 }
 
