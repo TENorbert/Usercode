@@ -13,8 +13,16 @@ process.source = cms.Source("EmptySource",
                             )
 
 process.load("Configuration.StandardSequences.FrontierConditions_GlobalTag_cff")
+process.GlobalTag. connect = cms.string('frontier://(proxyurl=http://localhost:3128)(serverurl=http://localhost:8000/FrontierOnProd)(serverurl=http://localhost:8000/FrontierOnProd)(retrieve-ziplevel=0)(failovertoserver=no)/CMS_COND_31X_GLOBALTAG')
 # tag below tested in CMSSW_4_3_0_pre3
-process.GlobalTag.globaltag = 'GR_R_42_V14::All'
+#process.GlobalTag.globaltag = 'GR_R_42_V14::All'
+
+#this one below is specific of P5
+#process.GlobalTag.globaltag = 'GR_H_V24::All'
+#process.GlobalTag.globaltag = 'GR10_P_V12::All'
+#process.GlobalTag.globaltag = 'GR_H_V23::All'
+process.GlobalTag.globaltag = 'GR_H_V24::All'  # to be used inside P5, fall 2011
+
 
 
 process.load("Configuration.StandardSequences.Geometry_cff")
@@ -22,11 +30,15 @@ process.load("Configuration.StandardSequences.Geometry_cff")
 
 
 process.demo = cms.EDAnalyzer('AdjustEcalTimingFromLaser',
+
+                              doDebugMessages = cms.bool(True),
                               
                               # Tambe tests with this directory
                               # dirInPutFilesname = cms.string("/hdfs/cms/user/norbert/data/Validlaser/"),
                               # gio tests with this OTHER directory
-                              dirInPutFilesname = cms.string("/data/franzoni/data/LaserSelected/"),
+                              # dirInPutFilesname = cms.string("/data/franzoni/data/LaserSelected/"),
+                              # the following one is for P5
+                              dirInPutFilesname = cms.string("/nfshome0/franzoni/data/LaserSelected/"),
 
                               # directory where the output plots will be stored
                               dirOutPutPlotsname = cms.string("LaserTimingShiftRun163297VsRun1634833/"),
@@ -44,7 +56,7 @@ process.demo = cms.EDAnalyzer('AdjustEcalTimingFromLaser',
                               # Set Max and Min time on Each Runs
                               binlow  = cms.double(-50.),
                               binhigh = cms.double(50.),
-
+                              
                               # SetMaximum Minimum of Bins on TimeshiftHist
                               lbin = cms.double(-5.0),
                               hbin = cms.double(5.0),
@@ -54,7 +66,8 @@ process.demo = cms.EDAnalyzer('AdjustEcalTimingFromLaser',
                               # the average to be subtracted is computed over:
                               #    - a whole sector, for EE feds
                               #    - separately for the two laser light distribution modules (I-shaped and L-shaped) of EB supermodules 
-                              subtractAverageDifferences = cms.bool(False)
+                              subtractAverageDifferences  = cms.bool(True),
+                              doHwSetFromDb               = cms.bool(False),
                               
 )
 
