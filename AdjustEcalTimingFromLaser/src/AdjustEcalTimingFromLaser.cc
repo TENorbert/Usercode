@@ -13,7 +13,7 @@
 //
 // Original Author:  Tambe_Ebai_Norber_+_Giovanni_(UMN) 
 //         Created:  Fri Mar  9 14:33:49 CET 2012
-// $Id: AdjustEcalTimingFromLaser.cc,v 1.11 2012/03/19 12:24:54 franzoni Exp $
+// $Id: AdjustEcalTimingFromLaser.cc,v 1.12 2012/03/19 18:21:41 franzoni Exp $
 //
 //
 
@@ -135,6 +135,8 @@ private:
   bool        doDebugMessages;
   float binlow, binhigh;
   float lbin, hbin;
+  float maxTimeDifferenceUsedForAverage;
+  
 
   // the chain which will be used to hold all the ntuples
   TChain * tx;
@@ -323,6 +325,7 @@ AdjustEcalTimingFromLaser::AdjustEcalTimingFromLaser(const edm::ParameterSet& iC
   fileOutPutName ( iConfig.getParameter<std::string>("fileOutPutName") ) ,
   doDebugMessages ( iConfig.getParameter<bool>("doDebugMessages") ) ,
   subtractAverageDifferences  ( iConfig.getParameter<bool>("subtractAverageDifferences") ) ,
+  maxTimeDifferenceUsedForAverage  ( iConfig.getParameter<double>("maxTimeDifferenceUsedForAverage") ) ,
   doHwSetFromDb ( iConfig.getParameter<bool>("doHwSetFromDb") ) ,
   NWLtmp  ( iConfig.getParameter<int>("NWL") ) ,
   binlow  ( iConfig.getParameter<double>("binlow") ) ,
@@ -540,7 +543,6 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
 	    // this statement is illegal! IS It ok to remove it?  TO BE CHECKED
 	    //wl = eewl;
 	    nwl = 3;
-	    //            EEDetId eedetid;
 	    
 	    EEDetId eedetid(x.detId);
 	    int ix = eedetid.ix();
@@ -648,7 +650,6 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
 		//int xtalWithinCCUid = 5*( VFEid-1) + xtalInVFE -1; // TEN expects [0,24]
 		//int m = x.fed - 610;
 		int ccuid = IdCCU;
-		//  EcalTrigTowerDetId(ebdetid);
 		//
 		//int nxtal =  ebdetid.ic();  // include Crystal Number
 		std::cout << "Crystal with Id \t" << eid << " Has CCUid \t" << IdCCU  << std::endl;
@@ -661,13 +662,6 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
 
 		//  }
 		
-		// now fill 1D hists
-		// Run A
-		  
-		//   ccuInFedEBtimeRunA[m][ccuid -1]->Fill( CCUInFedTimesEB_runA[m][ccuid-1][xtalWithinCCUid] );
-		  
-
-
 
 		if(x.fed ==610)// what's special about this fed?   TO BE CHECKED
 		  {
@@ -702,7 +696,6 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
 	      // this statement is illegal! IS It ok to remove it?  TO BE CHECKED
 	      // wl = eewl;
 	      nwl = 3;
-	      //            EEDetId eedetid;
 	      
 	      EEDetId eedetid(x.detId);
 	      int ix = eedetid.ix();
@@ -767,7 +760,7 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
 	
 
     }// end of Loop over entries( xtals)
-  std::cout << "AFTER the end of the loop" << std::endl;
+  std::cout << "AFTER the end of the loop over events" << std::endl;
   
   
 
@@ -956,8 +949,8 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
   Savehist(EEMccu1dprojection);
 
   
-  //loop over all FED TProfile2D
   // EB
+  //loop over all FED TProfile2D: make differences RunA-RunB, make 1d projections and fill arrays which will be necessary for xmls' 
   for( int nh = 0; nh < numEBFed; nh++)
     {
       CCUTimeShiftEB[nh]= SubtractTwoTProfile2D(CCUAvgTimeEB_RunA[nh], CCUAvgTimeEB_RunB[nh], subtractAverageDifferences, true);
@@ -970,30 +963,28 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
       EBCCU1dprojection[nh]= make1dProjection(CCUTimeShiftEB[nh]);      // Real 1D Projection here!
       SaveCanvasInDir(CCUTimeShiftEB[nh]);
       Savehist(EBCCU1dprojection[nh]);
-
     }
   
   //EE
+  //loop over all FED TProfile2D: make differences RunA-RunB, make 1d projections and fill arrays which will be necessary for xmls' 
   for ( int eenh = 0; eenh < numSC; eenh++)
     {
-      //EE plus
+      ///////////////////EE plus
       CCUTimeShiftEEP[eenh]= SubtractTwoTProfile2D(CCUAvgTimeEEP_RunA[eenh], CCUAvgTimeEEP_RunB[eenh], subtractAverageDifferences, false);
       CCUTimeShiftEEP[eenh]->SetMinimum(lbin);
       CCUTimeShiftEEP[eenh]->SetMaximum(hbin);
-      //GetCCUId and Time EE+
+
       if (doDebugMessages) std::cout << "GF just before calling EEP GetCCUIdandTimeshiftTProfileHist to operate over: " << CCUTimeShiftEEP[eenh]->GetName() << std::endl;
       GetCCUIdandTimeshiftTProfileHist(CCUTimeShiftEEP[eenh], 1);
-      if (doDebugMessages) std::cout << "GF just AFTER calling EEP GetCCUIdandTimeshiftTProfileHist to operate over: " << CCUTimeShiftEEP[eenh]->GetName() << std::endl;      
-
-      
+      if (doDebugMessages) std::cout << "GF just AFTER calling EEP GetCCUIdandTimeshiftTProfileHist to operate over: " << CCUTimeShiftEEP[eenh]->GetName() << std::endl;            
       EEPCCU1dprojection[eenh]= make1dProjection(CCUTimeShiftEEP[eenh]); // Real 1D Projection here!
 
       SaveCanvasInDir(CCUTimeShiftEEP[eenh]);
       Savehist(EEPCCU1dprojection[eenh]);
-      
-      //EE Minus   
-      CCUTimeShiftEEM[eenh]= SubtractTwoTProfile2D(CCUAvgTimeEEM_RunA[eenh], CCUAvgTimeEEM_RunB[eenh], subtractAverageDifferences, false);
-      
+
+
+      ///////////////////EE minus
+      CCUTimeShiftEEM[eenh]= SubtractTwoTProfile2D(CCUAvgTimeEEM_RunA[eenh], CCUAvgTimeEEM_RunB[eenh], subtractAverageDifferences, false);      
       CCUTimeShiftEEM[eenh]->SetMinimum(lbin);
       CCUTimeShiftEEM[eenh]->SetMaximum(hbin);
       
@@ -1002,10 +993,10 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
       GetCCUIdandTimeshiftTProfileHist(CCUTimeShiftEEM[eenh], -1);
       if (doDebugMessages) std::cout << "GF just AFTER calling EEM GetCCUIdandTimeshiftTProfileHist to operate over: " << CCUTimeShiftEEM[eenh]->GetName() << std::endl;
 
-
       EEMCCU1dprojection[eenh]= make1dProjection(CCUTimeShiftEEM[eenh]); // Real 1D Projection here!
       SaveCanvasInDir(CCUTimeShiftEEM[eenh]);
       Savehist(EEMCCU1dprojection[eenh]);
+
     }
 
   savefile = new TFile(fileOutPutName.c_str(), "recreate");
@@ -1016,8 +1007,9 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
   savefile->Close();
 
   std::cout << "\t doHwSetFromDb is: " << doHwSetFromDb
-	    << "\t subtractAverageDifferences: " << subtractAverageDifferences << std::endl;
-
+	    << "\t subtractAverageDifferences: " << subtractAverageDifferences
+	    << "\t maxTimeDifferenceUsedForAverage: " << maxTimeDifferenceUsedForAverage
+	    << std::endl;
   if(doHwSetFromDb) 
     {
       std::cout << "\n\n++ at end of analyze - doing db query + xml stuff "<<  std::endl;  
@@ -1565,10 +1557,10 @@ AdjustEcalTimingFromLaser::SubtractTwoTProfile2D( TProfile2D* hprof_runA, TProfi
   // both fixed at 0 if removeSectorAverage==false
   // kept the same if isEb==false 
   float averageDiffL(0);  float averageDiffI(0);
-  int   numActiveL(0);    int   numActiveI(0);
+  int   numActiveL  (0);  int   numActiveI  (0);
   
-  bool isEbPlus(false);
   // determine meaningfully isEbPlus, if removeSectorAverage==true
+  bool isEbPlus(false);
   if(removeSectorAverage && isEb){ 
     // if you're in EB, determined whether it's EB+ or EB-
     float sideA = ( hprof_runA->GetYaxis()->GetXmin() + hprof_runA->GetYaxis()->GetXmax() )  ;
@@ -1597,9 +1589,12 @@ AdjustEcalTimingFromLaser::SubtractTwoTProfile2D( TProfile2D* hprof_runA, TProfi
 	    // get number entries in Each 2D First.
 	    int nentriesA =  hprof_runA->GetBinEntries(binsA);
 	    int nentriesB =  hprof_runB->GetBinEntries(binsB);
-
+	    
+	    // if time difference bigger than reasonable limit -> suspect 'bad measurement' => excluded it from the average
+	    if( fabs(timeA-timeB)> maxTimeDifferenceUsedForAverage )  continue;
 	    // you need to have two valid averages to consider a CCU for the average difference
-	    if (nentriesA==0 || nentriesB==0) continue;
+	    if (nentriesA==0 || nentriesB==0)                         continue;
+
 	    if(isEb)
 	      {
 		// in the EB case, discriminate I and L, and incremet mean accordingly
@@ -1751,22 +1746,19 @@ void AdjustEcalTimingFromLaser::GetCCUIdandTimeshiftTProfileHist(TProfile2D* myp
   int nxbins = myprof->GetNbinsX();
   int nybins = myprof->GetNbinsY();
 
-  //GF : replace this with global arrays 'ala-SIC'
   //EB    In EB CCU == Trigger Tower
   std::vector<int>   CCUIdVecEB;
   std::vector<float> CCUIdTimeEB;
-
   // EE   // CCU seen as SuperCrystal in EE..Not as Trigger Tower As Normally done!
   std::vector<int>   CCUIdVecEE;
   std::vector<float> CCUIdTimeEE;
 
   //EB
-  EBDetId ebdetId;
+  // EBDetId ebdetId;
   //EE
-  EEDetId eedetIdm;
-
-  int CCUIdEB = 0;
-  int CCUIdEE = 0;
+  //  EEDetId eedetIdm;
+  //int CCUIdEB = 0;
+  //int CCUIdEE = 0;
   
   if (doDebugMessages) std::cout << "GF just BEFORE LOOP iz: " << iz << " name: " << myprof->GetName() << " bins nxbins: " << nxbins << "\t" << nybins <<  std::endl;
 
@@ -1794,8 +1786,6 @@ void AdjustEcalTimingFromLaser::GetCCUIdandTimeshiftTProfileHist(TProfile2D* myp
 	      // these are crystal coordinated
 	      int ieta = myprof->GetYaxis()->GetBinLowEdge(ny);
 	      int iphi = myprof->GetXaxis()->GetBinLowEdge(nx);
-	      
-	      if (doDebugMessages) cout << "GF inside the GetCCUIdandTimeshiftTProfileHist EB loop  : Gloobal Bin " << bin << " has entries " << nentries << " and bin number nx, ny = " << nx << ", " << ny << "\t and ieta, iphi = " << ieta << ", " << iphi << "\ttshift: " << tshift <<  "\t binConte: " << myprof->GetBinContent(bin)  << endl;
 
 	      // this should in principle no longer be needed...  ??
 	      if(iphi < 1 || iphi > 360 || ieta < -85 || ieta > 85 ) continue;
@@ -1813,7 +1803,7 @@ void AdjustEcalTimingFromLaser::GetCCUIdandTimeshiftTProfileHist(TProfile2D* myp
 	      // Get SM for this CCU, VIA the representative cryatal
 	      int iSM = Numbers::iSM(ebdetId);
 	      // Get CCUid, VIA the representative cryatal
-	      CCUIdEB = Numbers::iSC(iSM,EcalBarrel,ebdetId.ietaSM(),ebdetId.iphiSM());
+	      int CCUIdEB = Numbers::iSC(iSM,EcalBarrel,ebdetId.ietaSM(),ebdetId.iphiSM());
 	      
 	      CCUIdVecEB.push_back(CCUIdEB);	
 	      CCUIdTimeEB.push_back(tshift);
@@ -1821,7 +1811,12 @@ void AdjustEcalTimingFromLaser::GetCCUIdandTimeshiftTProfileHist(TProfile2D* myp
 		std::cout << "filling EB array outside of bounds. Bailing out. iSM: " << iSM << " CCUIdEB: " << CCUIdEB << std::endl;
 		assert(0);		  }
 	      else { 	      feShiftsForNewSettingsEB[iSM-1][CCUIdEB-1] = tshift; }
-
+	      
+	      if (doDebugMessages) cout << "GF inside the GetCCUIdandTimeshiftTProfileHist EB loop  for fed:" << myprof->GetName()
+					<< "\t iSMee: " << iSM
+					<< " Gloobal Bin " << bin << " has entries " << nentries 
+					<< " and bin number nx, ny = " << nx << ", " << ny << "\t and ieta, iphi = " << ieta << ", " << iphi 
+					<< "\ttshift: " << tshift <<  "\t binConte: " << myprof->GetBinContent(bin)  << endl;
 	    }// ny
 	}//nx
       
@@ -1871,8 +1866,6 @@ void AdjustEcalTimingFromLaser::GetCCUIdandTimeshiftTProfileHist(TProfile2D* myp
 		  
 		  // skip Bad ix and iy values:
 		  if(ix < 1 || ix > 100 || iy < 1 || iy > 100) continue;
-		  
-		  if (doDebugMessages) cout << "GF inside the GetCCUIdandTimeshiftTProfileHist EE loop  : Gloobal Bin " << bin << " has entries " << nentries << " and bin number nx, ny = " << nx << ", " << ny << "\t and ix, iy = " << ix << ", " << iy  << "\ttshift: " << tshift <<  endl;
 
 		  if( !EEDetId::validDetId(ix,iy,iz) ) { 
 		    // std::cout << "invalid EEdetID ix: " << ix << "\t iy: " << iy << std::endl;  
@@ -1882,15 +1875,19 @@ void AdjustEcalTimingFromLaser::GetCCUIdandTimeshiftTProfileHist(TProfile2D* myp
 		  }
 		  
 		  // Make EEDetID
-		  EEDetId eedetIdm(ix,iy,iz,0);
+		  //EEDetId eedetIdm(ix,iy,iz,0);
+		  EEDetId eedetIdm(ix,iy,iz);
 		  // if(!eedetIdm.validDetId(ix,iy,iz)) continue;
 
 		  // if (doDebugMessages) std::cout << "GF: do I survive, BEYOND EE invalid? ix: " << ix << "\t iy: " << iy  << std::endl;
 
 		  // which SM?
 		  int iSMee = Numbers::iSM(eedetIdm);
+		  // I need to turn this index into the SIC index (see below where the following comment appears):
+		  // idcc is an index which runs separately within (EE- , EE+) and EB separately
+		 
 		  // which TT/SC?
-		  CCUIdEE = Numbers::iSC(iSMee,EcalEndcap,eedetIdm.ix(),eedetIdm.iy());
+		  int CCUIdEE = Numbers::iSC(iSMee,EcalEndcap,eedetIdm.ix(),eedetIdm.iy());
 	    
 		  CCUIdVecEE.push_back(CCUIdEE);
 		  CCUIdTimeEE.push_back(tshift);
@@ -1899,6 +1896,13 @@ void AdjustEcalTimingFromLaser::GetCCUIdandTimeshiftTProfileHist(TProfile2D* myp
 		    assert(0);		  }
 		  else{ 		  feShiftsForNewSettingsEE[iSMee-1][CCUIdEE-1] = tshift; }
 		  
+		  if (doDebugMessages) cout << "GF inside the GetCCUIdandTimeshiftTProfileHist EE loop for fed: " << myprof->GetName()
+					    << "\t iSMee: " << iSMee
+					    << " Gloobal Bin " << bin << " has entries " << nentries 
+					    << " and bin number nx, ny = " << nx << ", " << ny 
+					    << "\t and ix, iy = " << ix << ", " << iy  
+					    << "\ttshift: " << tshift <<  endl;
+
 		}// loop nx
 	}// loop ny
       
@@ -2533,8 +2537,6 @@ void AdjustEcalTimingFromLaser::readHwSettingsFromDb()
 {
 
   // now read the DB and get the absolute delays
-
-
   
   string sid;
   string user;
@@ -2565,6 +2567,7 @@ void AdjustEcalTimingFromLaser::readHwSettingsFromDb()
     std::list<ODDelaysDat>::const_iterator e = delays.end();
     while (i != e)
       {
+	// idcc is an index which runs separately within (EE- , EE+) and EB
 	int idcc = i->getFedId()-600;
 	int ism = 0;
 	if(idcc >= 1 && idcc <= 9)        // EEM
@@ -2578,7 +2581,7 @@ void AdjustEcalTimingFromLaser::readHwSettingsFromDb()
 	
 	int ccuId = i->getTTId();
 	
-	std::cout << "idcc: " << idcc << " ism: " << ism << " ccuId: " << ccuId << " offset: " << i->getTimeOffset() << std::endl;
+	std::cout << "getting db - idcc: " << idcc << " ism: " << ism << " ccuId: " << ccuId << " offset: " << i->getTimeOffset() << std::endl;
 	
 	if(idcc >= 10 && idcc <= 45) // EB
 	  {
@@ -2664,7 +2667,8 @@ TH1F* AdjustEcalTimingFromLaser::make1dProjection(TProfile2D* hprof)
 		  if( (entry<1)  ||  cell==0  ||  ( leur < -999) ){ continue;}
 		  else{tproject->Fill(leur); 
 		    // increment enrty for every non zero filled entry
-		    Nentry++;std::cout << "CCU with ix =" << ix << "\t" << " And iy =" << iy << "\t"<< " Has Time="<< leur << std::endl;
+		    Nentry++;
+		    //std::cout << "CCU with ix =" << ix << "\t" << " And iy =" << iy << "\t"<< " Has Time="<< leur << std::endl;
 		  }
 		  
 		  
