@@ -66,7 +66,9 @@ process.demo = cms.EDAnalyzer('AdjustEcalTimingFromLaser',
                               # the average to be subtracted is computed over:
                               #    - a whole sector, for EE feds
                               #    - separately for the two laser light distribution modules (I-shaped and L-shaped) of EB supermodules 
-                              subtractAverageDifferences  = cms.bool(True),
+                              subtractAverageDifferences       = cms.bool(True),
+                              maxTimeDifferenceUsedForAverage  = cms.double(30.),
+                             
                               doHwSetFromDb               = cms.bool(False),
                               
 )
