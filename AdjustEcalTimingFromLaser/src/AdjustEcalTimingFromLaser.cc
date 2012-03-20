@@ -13,7 +13,7 @@
 //
 // Original Author:  Tambe_Ebai_Norber_+_Giovanni_(UMN) 
 //         Created:  Fri Mar  9 14:33:49 CET 2012
-// $Id: AdjustEcalTimingFromLaser.cc,v 1.14 2012/03/19 22:19:34 franzoni Exp $
+// $Id: AdjustEcalTimingFromLaser.cc,v 1.15 2012/03/20 14:49:09 franzoni Exp $
 //
 //
 
@@ -306,17 +306,7 @@ private:
 
 };
 
-//
-// constants, enums and typedefs
-//
 
-//
-// static data member definitions
-//
-
-//
-// constructors and destructor
-//
 AdjustEcalTimingFromLaser::AdjustEcalTimingFromLaser(const edm::ParameterSet& iConfig)  : 
   RunB4TS ( iConfig.getParameter<int>("RunB4TS") ) ,
   RunAFTS ( iConfig.getParameter<int>("RunAFTS") ) ,
@@ -489,25 +479,10 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
 	      
 	      const EcalElectronicsId eid = x.elecId;
 	      int IdCCU = eid.towerId();
-	      // int VFEid = eid.stripId();
-	      //int xtalInVFE = eid.xtalId();
-	      //int xtalWithinCCUid = 5*( VFEid-1) + xtalInVFE -1; // TEN  expects [0,24]
-	      //int m = x.fed - 610;
 	      int ccuid =IdCCU;
-	      //  EcalTrigTowerDetId(ebdetid);
-	      //int nxtal =  ebdetid.ic();
 
-	      //if(m < EBMaxSM && ccuid < maxNumCCUInFed)
-	      //  {
 	      CCUInFedTimesEB_runA[numfed][ccuid-1] += (x.tmax[0]-5)*25;
-	      //CCUInFedTimesEB_runB[m][ccuid-1][xtalWithinCCUid] = (x.tmax[0]-5)*25;
-	      //CCUInFedTimesEB_runB[m][ccuid-1][nxtal -1] = (x.tmax[0]-5)*25;
 	      CCUInFedNumEntriesEB_runA[numfed][ccuid-1] ++;   // Not really used! Just for check!
-	      //  }
-	      
-	      //  Fill ccu 1D timing  dist for Run B
-	      
-	      //     ccuInFedEBtimeRunB[m][ccuid -1]->Fill( CCUInFedTimesEB_runB[m][ccuid-1][xtalWithinCCUid] );
 
 
 	      if(x.fed ==610)
@@ -551,9 +526,6 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
 	    //   Do EE  here!
 	    const EcalElectronicsId eid = x.elecId;
 	    int SCId = eid.towerId(); // SC Id
-	    //                                            int VFEid = eid.stripId();
-	    //                                            int xtalInVFE = eid.xtalId();
-	    //                                            int xtalWithinCCUid = 5*( VFEid-1) + xtalInVFE -1; // TEN expects [0,24]
 
 	    // Loop over number crystals in EE
 	    xtaltimeDistEE->Fill( (x.tmax[0]-nominalTimeInBx)*bx2nanosecond);
@@ -645,50 +617,31 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
 		
 		const EcalElectronicsId eid = x.elecId;
 		int IdCCU = eid.towerId();
-		//int VFEid = eid.stripId();
-		//int xtalInVFE = eid.xtalId();
-		//int xtalWithinCCUid = 5*( VFEid-1) + xtalInVFE -1; // TEN expects [0,24]
-		//int m = x.fed - 610;
 		int ccuid = IdCCU;
-		//
-		//int nxtal =  ebdetid.ic();  // include Crystal Number
-		std::cout << "Crystal with Id \t" << eid << " Has CCUid \t" << IdCCU  << std::endl;
-		//if(m < EBMaxSM && ccuid < maxNumCCUInFed)
-		//  {
-		CCUInFedTimesEB_runB[numfed][ccuid-1] += (x.tmax[0]- 5)*25;
-		//CCUInFedTimesEB_runA[m][ccuid-1][xtalWithinCCUid] = (x.tmax[0]- 5)*25;
-		//CCUInFedTimesEB_runA[m][ccuid-1][nxtal -1] = (x.tmax[0]- 5)*25;
-		CCUInFedNumEntriesEB_runB[numfed][ccuid-1] ++;
 
-		//  }
-		
+		CCUInFedTimesEB_runB[numfed][ccuid-1] += (x.tmax[0]- 5)*25;
+		CCUInFedNumEntriesEB_runB[numfed][ccuid-1] ++;
 
 		if(x.fed ==610)// what's special about this fed?   TO BE CHECKED
 		  {
 		    EBM1Dtime_RunB->Fill(Xtaltime);
-		    //		  cout <<  " the Xtal eta is:" << ieta << " Xtal Phi:" << iphi << " Xtal Time is:" << Xtaltime << endl;
 		  }
 		
 		if (x.fed == 628)
 		  {  
-		    // cout << "Crystal time is :" << Xtaltime << endl;
 		    EBP1Dtime_RunB->Fill(Xtaltime); 
 		  }
 		
 		CCUAvgTimeEB_RunB[numfed]->Fill(iphi, ieta, Xtaltime); // Fill all EB-FEDs
 		
 		XtaltimeVsAmpEB_RunB->Fill(x.qmax[0],Xtaltime); 
-		//XtaltimeVsTimeEB->Fill( x.time[0],x.tmax[0]);
 		XtaltimeVsLumiEB_RunB->Fill(x.lumi[0],x.tmax[0]);
 		XtaltimeVsFedIDEB_RunB->Fill(x.fed,(x.tmax[0]-nominalTimeInBx)*bx2nanosecond);
 		
 		xtaltimeDistEB_RunB->Fill( (x.tmax[0]-nominalTimeInBx)*bx2nanosecond);
-		//FedAvgTimingEB_RunB->Fill(x.iy+10,x.ix,(x.tmax[0]-nominalTimeInBx)*bx2nanosecond); //  ns time!
-		//ccutimeEBrunB->Fill(x.iy+10,x.ix,(x.tmax[0]-nominalTimeInBx)*bx2nanosecond); // CCU 5by5 bining in EB Run B check with data
 		FedAvgTimingEB_RunB->Fill(iphi,ieta,(x.tmax[0]-nominalTimeInBx)*bx2nanosecond); //  ns time!
 		ccutimeEBrunB->Fill(iphi,ieta,(x.tmax[0]-nominalTimeInBx)*bx2nanosecond); // CCU 5by5 bining in EB Run B check with data
-		
-		//   Do EE  here!
+
 	      }
 	    
 	    else{
@@ -1620,9 +1573,7 @@ AdjustEcalTimingFromLaser::SubtractTwoTProfile2D( TProfile2D* hprof_runA, TProfi
       }// loop x b bins
   averageDiffL /= numActiveL;
   averageDiffI /= numActiveI;
-  //std::cout << "GF debug - averageDiffL: " << averageDiffL << " numActiveL: " << numActiveL 
-  //<< " averageDiffI: " << averageDiffI << " numActiveI: " << numActiveI << std::endl;
-
+  
   } //end-if removeSectorAverage
 
 
@@ -1710,27 +1661,10 @@ void AdjustEcalTimingFromLaser::SaveCanvasInDir( TProfile2D* mytprof)
   mystyle.SetLegendBorderSize(0.2);
   mystyle.SetStatH(0.2);
   mystyle.SetOptStat(111111);
-  // Sets Histogram Title at Center
-  //  mystyle.SetTitleX(0.5);
-  // mystyle.SetTitleAlign(23);
+
   TCanvas myCanvas;
   myCanvas.cd();
-  
-  // make Empty Bins appear white.
-  //int nxbins = mytprof->GetNbinsX();
-  //int nybins = mytprof->GetNbinsY();
-  
-  // Loop over bins and set empty bins to show white.
-  //for(int ii=0; ii<= nybins; ii++)
-  //{
-  //  for( int jj=0; jj <= nxbins; jj++)
-  //    {
-  //      int bin = mytprof->GetBin(ii,jj);
-  //      int nentry = mytprof->GetBinEntries(bin);
-  //if(nentry == 0){ mytprof->SetBinContent(bin, -999999);};
-  //     }
-  //}
-  
+
   mytprof->GetXaxis()->SetTitle("i#phi");
   mytprof->GetYaxis()->SetTitle("i#eta");
   mytprof->Draw("colztext"); // Where text happens.
@@ -1760,14 +1694,10 @@ void AdjustEcalTimingFromLaser::GetCCUIdandTimeshiftTProfileHist(TProfile2D* myp
   // EE   // CCU seen as SuperCrystal in EE..Not as Trigger Tower As Normally done!
   std::vector<int>   CCUIdVecEE;
   std::vector<float> CCUIdTimeEE;
-
-  //EB
-  // EBDetId ebdetId;
-  //EE
-  //  EEDetId eedetIdm;
-  //int CCUIdEB = 0;
-  //int CCUIdEE = 0;
   
+  int feShiftsCounterEB(0);
+  int feShiftsCounterEE(0);
+
   if (doDebugMessages) std::cout << "GF just BEFORE LOOP iz: " << iz << " name: " << myprof->GetName() << " bins nxbins: " << nxbins << "\t" << nybins <<  std::endl;
 
 
@@ -1818,7 +1748,7 @@ void AdjustEcalTimingFromLaser::GetCCUIdandTimeshiftTProfileHist(TProfile2D* myp
 	      if( (iSM-1)>=EBDetId::MAX_SM || (CCUIdEB-1)>=EcalTrigTowerDetId::kEBTowersPerSM) {
 		std::cout << "filling EB array outside of bounds. Bailing out. iSM: " << iSM << " CCUIdEB: " << CCUIdEB << std::endl;
 		assert(0);		  }
-	      else { 	      feShiftsForNewSettingsEB[iSM-1][CCUIdEB-1] = tshift; }
+	      else { 	      feShiftsForNewSettingsEB[iSM-1][CCUIdEB-1] = tshift;  feShiftsCounterEB++;}
 	      
 	      if (doDebugMessages) cout << "GF inside the GetCCUIdandTimeshiftTProfileHist EB loop  for fed:" << myprof->GetName()
 					<< "\t iSMee: " << iSM
@@ -1857,8 +1787,6 @@ void AdjustEcalTimingFromLaser::GetCCUIdandTimeshiftTProfileHist(TProfile2D* myp
 	      for(int nx = 1; nx < nxbins+1; nx++)
 		{
 		  
-		  //int   bin      = myprof->GetBin(ny,nx); // is this RIGHT? ny, nx????
-		  // what if I flip those two???
 		  int   bin      = myprof->GetBin(nx,ny); // is this RIGHT? ny, nx????
 		  int   nentries = myprof->GetBinEntries(bin);
 		  float tshift   = 0; // initialise the time to zero
@@ -1870,9 +1798,6 @@ void AdjustEcalTimingFromLaser::GetCCUIdandTimeshiftTProfileHist(TProfile2D* myp
 		  // if the time difference was set to mark 'missing data in at least one run', ignore the present CCU-bin
 		  if ( tshift < (timeValueNoData+1)) continue;
 
-		  // create a 'representative' crystal within the bin
-		  //int ix = myprof->GetXaxis()->GetBinLowEdge(nx)+1;
-		  //int iy = myprof->GetYaxis()->GetBinLowEdge(ny)+1;
 		  int ix = myprof->GetXaxis()->GetBinLowEdge(nx);
 		  int iy = myprof->GetYaxis()->GetBinLowEdge(ny);
 		  
@@ -1885,13 +1810,8 @@ void AdjustEcalTimingFromLaser::GetCCUIdandTimeshiftTProfileHist(TProfile2D* myp
 		  else{ 
 		    //std::cout << "VALID EEdetID ix: " << ix << "\t iy: " << iy << std::endl; 
 		  }
-		  
-		  // Make EEDetID
-		  //EEDetId eedetIdm(ix,iy,iz,0);
-		  EEDetId eedetIdm(ix,iy,iz);
-		  // if(!eedetIdm.validDetId(ix,iy,iz)) continue;
 
-		  // if (doDebugMessages) std::cout << "GF: do I survive, BEYOND EE invalid? ix: " << ix << "\t iy: " << iy  << std::endl;
+		  EEDetId eedetIdm(ix,iy,iz);
 
 		  // which SM?
 		  int iSMee = Numbers::iSM(eedetIdm);
@@ -1906,7 +1826,7 @@ void AdjustEcalTimingFromLaser::GetCCUIdandTimeshiftTProfileHist(TProfile2D* myp
 		  if( (iSMee-1)>=maxEEsm || (CCUIdEE-1)>=EcalTrigTowerDetId::kEBTowersPerSM) {
 		    std::cout << "filling EE array outside of bounds. Bailing out. iSMee: " << iSMee << " CCUIdEE: " << CCUIdEE << std::endl;
 		    assert(0);		  }
-		  else{ 		  feShiftsForNewSettingsEE[iSMee-1][CCUIdEE-1] = tshift; }
+		  else{ 		  feShiftsForNewSettingsEE[iSMee-1][CCUIdEE-1] = tshift; feShiftsCounterEE++;}
 		  
 		  if (doDebugMessages) cout << "GF inside the GetCCUIdandTimeshiftTProfileHist EE loop for fed: " << myprof->GetName()
 					    << "\t iSMee: " << iSMee
@@ -1938,6 +1858,9 @@ void AdjustEcalTimingFromLaser::GetCCUIdandTimeshiftTProfileHist(TProfile2D* myp
      
     } // end of filling vecs for EE
   
+  std::cout << "++ at the end of GetCCUIdandTimeshiftTProfileHist; arrays with shifts prepared: "
+	    << feShiftsCounterEB << " for EB and " << feShiftsCounterEE << " for EE" << std::endl;
+
 } // end of fxn to GetCCUId and TimeShift.
 
 
@@ -2067,14 +1990,7 @@ void AdjustEcalTimingFromLaser::writehist()
   
   for( int ii = 0; ii < EBMaxSM; ii++)
     {
-      //  for( int jj = 0; jj < maxNumCCUInFed; jj++)
-      //{
-      //   ccuInFedEBtimeshift[ii][jj]-> GetXaxis()->SetTitle("Time Shift[ns]");
-      //   ccuInFedEBtimeshift[ii][jj]-> GetYaxis()->SetTitle("# of CCUs In Fed");
-      //   ccuInFedEBtimeshift[ii][jj]-> Draw();
-      //   ccuInFedEBtimeshift[ii][jj]-> Write();
-      //   //
-      //}
+
       ccuInFedEBtimeshift[ii]-> GetXaxis()->SetTitle("Time Shift[ns]");
       ccuInFedEBtimeshift[ii]-> GetYaxis()->SetTitle("# of CCUs In Fed");
       ccuInFedEBtimeshift[ii]-> Draw();
