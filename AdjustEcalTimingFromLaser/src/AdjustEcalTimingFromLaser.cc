@@ -13,7 +13,7 @@
 //
 // Original Author:  Tambe_Ebai_Norber_+_Giovanni_(UMN) 
 //         Created:  Fri Mar  9 14:33:49 CET 2012
-// $Id: AdjustEcalTimingFromLaser.cc,v 1.13 2012/03/19 22:03:36 franzoni Exp $
+// $Id: AdjustEcalTimingFromLaser.cc,v 1.14 2012/03/19 22:19:34 franzoni Exp $
 //
 //
 
@@ -1210,14 +1210,10 @@ AdjustEcalTimingFromLaser::beginJob()
 	  
 	  //for RunA
 	  fedhistname1 +="_RunA";
-	  //CCUAvgTimeEB_RunA[hnum] = new TProfile2D(fedhistname1.c_str(),fedhisttitle.c_str(),4,1,21,17,1,86);
 	  CCUAvgTimeEB_RunA[hnum] = new TProfile2D(fedhistname1.c_str(),fedhisttitle.c_str(),4,1+(hnum-18)*20,1+((hnum-18)+1)*20,17,1,86);
 	  // For Run B
 	  fedhistname2 +="_RunB";
-	  //CCUAvgTimeEB_RunB[hnum] = new TProfile2D(fedhistname2.c_str(),fedhistname2.c_str(),4,1,21,17,1.,86);
 	  CCUAvgTimeEB_RunB[hnum] = new TProfile2D(fedhistname2.c_str(),fedhistname2.c_str(),4,1+(hnum-18)*20,1+((hnum-18)+1)*20,17,1,86);
-
-	  //CCUAvgTimeEB_RunA[hnum] = new TProfile2D(fedhistname.c_str(),fedhistname.c_str(),4,1+(hnum-18)*20,1+((hnum-18)+1)*20,17,1,86);
 	  
 	}
     }
@@ -1240,13 +1236,13 @@ AdjustEcalTimingFromLaser::beginJob()
       //fedhistname +=ConvertIntToString(-hnum);
       //For Run A
       fedhistname1 += "_RunA";
-      CCUAvgTimeEEM_RunA[eeMnum] = new TProfile2D(fedhistname1.c_str(),fedhtitle.c_str(),20,0.0,100,20,0.,100); // GF!
-      //CCUAvgTimeEEM_RunA[eeMnum] = new TProfile2D(fedhistname1.c_str(),fedhtitle.c_str(),20,1.,101,20,1.,101.);
+      //CCUAvgTimeEEM_RunA[eeMnum] = new TProfile2D(fedhistname1.c_str(),fedhtitle.c_str(),20,0.0,100,20,0.,100); // GF!
+      CCUAvgTimeEEM_RunA[eeMnum] = new TProfile2D(fedhistname1.c_str(),fedhtitle.c_str(),20,1.,101,20,1.,101.);
 
       // For Run B
       fedhistname2 += "_RunB";
-      CCUAvgTimeEEM_RunB[eeMnum] = new TProfile2D(fedhistname2.c_str(),fedhistname2.c_str(),20,0.,100,20,0.,100); // GF!
-      //CCUAvgTimeEEM_RunB[eeMnum] = new TProfile2D(fedhistname2.c_str(),fedhistname2.c_str(),20,1.,101,20,1.,101.);
+      //CCUAvgTimeEEM_RunB[eeMnum] = new TProfile2D(fedhistname2.c_str(),fedhistname2.c_str(),20,0.,100,20,0.,100); // GF!
+      CCUAvgTimeEEM_RunB[eeMnum] = new TProfile2D(fedhistname2.c_str(),fedhistname2.c_str(),20,1.,101,20,1.,101.);
       
       // EE Plus
       //RunA
@@ -1261,10 +1257,12 @@ AdjustEcalTimingFromLaser::beginJob()
       fedtitle   += ConvertIntToString(eeMnum + 646);
       // For Run A
       EESecname1 +="_RunA";
-      CCUAvgTimeEEP_RunA[eeMnum] = new TProfile2D(EESecname1.c_str(),fedtitle.c_str(), 20, 0., 100, 20, 0.,100);
+      CCUAvgTimeEEP_RunA[eeMnum] = new TProfile2D(EESecname1.c_str(),fedtitle.c_str(),20,1.,101,20,1.,101.);
+      //CCUAvgTimeEEP_RunA[eeMnum] = new TProfile2D(EESecname1.c_str(),fedtitle.c_str(), 20, 0., 100, 20, 0.,100);
       // For Run B
       EESecname2 +="_RunB";
-      CCUAvgTimeEEP_RunB[eeMnum] = new TProfile2D(EESecname2.c_str(),EESecname2.c_str(), 20, 0., 100, 20, 0.,100); 
+      CCUAvgTimeEEP_RunB[eeMnum] = new TProfile2D(EESecname2.c_str(),EESecname2.c_str(),20,1.,101,20,1.,101.);
+      //CCUAvgTimeEEP_RunB[eeMnum] = new TProfile2D(EESecname2.c_str(),EESecname2.c_str(), 20, 0., 100, 20, 0.,100); 
     }
   
   
@@ -1278,18 +1276,26 @@ AdjustEcalTimingFromLaser::beginJob()
   ccutimeEBrunB = new TProfile2D("ccutimeEBrunB","CCU Mean Time Shift[ns] EB RunB", 72,1., 361, 34,-85,85);
   //EE plus
   //Run A
-  FedAvgTimingEEP = new TProfile2D("FedAvgTimingEEP","Crystal Time EE+", 100, 0., 100., 100, 0, 100);
-  ccutimeEEPrunA = new TProfile2D("ccutimeEEPrunA","CCU Mean Time Shift[ns] EE+", 20,0., 100, 20, 0,100);
+  FedAvgTimingEEP = new TProfile2D("FedAvgTimingEEP","Crystal Time EE+", 100, 1., 101., 100, 1., 101);
+  //FedAvgTimingEEP = new TProfile2D("FedAvgTimingEEP","Crystal Time EE+", 100, 0., 100., 100, 0, 100);
+  ccutimeEEPrunA = new TProfile2D("ccutimeEEPrunA","CCU Mean Time Shift[ns] EE+", 20,1, 101, 20, 1,101);
+  //ccutimeEEPrunA = new TProfile2D("ccutimeEEPrunA","CCU Mean Time Shift[ns] EE+", 20,0., 100, 20, 0,100);
   //Run B
-  FedAvgTimingEEP_RunB = new TProfile2D("FedAvgTimingEEP_RunB","Crystal Time EE+ RunB", 100, 0., 100., 100, 0, 100);
-  ccutimeEEPrunB = new TProfile2D("ccutimeEEPrunB","CCU Mean Time Shift[ns] EE+ RunB", 20,0., 100, 20, 0,100);
+  FedAvgTimingEEP_RunB = new TProfile2D("FedAvgTimingEEP_RunB","Crystal Time EE+ RunB", 100, 1., 101., 100, 1, 101);
+  //FedAvgTimingEEP_RunB = new TProfile2D("FedAvgTimingEEP_RunB","Crystal Time EE+ RunB", 100, 0., 100., 100, 0, 100);
+  ccutimeEEPrunB = new TProfile2D("ccutimeEEPrunB","CCU Mean Time Shift[ns] EE+ RunB", 20,1, 101, 20, 1,101);
+  //ccutimeEEPrunB = new TProfile2D("ccutimeEEPrunB","CCU Mean Time Shift[ns] EE+ RunB", 20,0., 100, 20, 0,100);
   //EE minus
   //  Run A
-  FedAvgTimingEEM = new TProfile2D("FedAvgTimingEEM","Crystal Time EE-", 100, 0., 100., 100, 0, 100);
-  ccutimeEEMrunA = new TProfile2D("ccutimeEEMrunA","CCU Mean Time Shift[ns] EE-", 20,0., 100, 20, 0,100);
+  FedAvgTimingEEM = new TProfile2D("FedAvgTimingEEM","Crystal Time EE-", 100, 1., 101., 100, 1, 101);
+  ccutimeEEMrunA = new TProfile2D("ccutimeEEMrunA","CCU Mean Time Shift[ns] EE-", 20,1., 101, 20, 1,101);
+  //FedAvgTimingEEM = new TProfile2D("FedAvgTimingEEM","Crystal Time EE-", 100, 0., 100., 100, 0, 100);
+  //ccutimeEEMrunA = new TProfile2D("ccutimeEEMrunA","CCU Mean Time Shift[ns] EE-", 20,0., 100, 20, 0,100);
   // run B
-  FedAvgTimingEEM_RunB = new TProfile2D("FedAvgTimingEEM_RunB","Crystal Time EE- RunB", 100, 0., 100., 100, 0, 100);
-  ccutimeEEMrunB = new TProfile2D("ccutimeEEMrunB","CCU Mean Time Shift[ns] EE- RunB", 20,0., 100, 20, 0,100);
+  FedAvgTimingEEM_RunB = new TProfile2D("FedAvgTimingEEM_RunB","Crystal Time EE- RunB", 100, 1, 101, 100, 1, 101);
+  ccutimeEEMrunB = new TProfile2D("ccutimeEEMrunB","CCU Mean Time Shift[ns] EE- RunB", 20,1, 101, 20, 1,101);
+  //FedAvgTimingEEM_RunB = new TProfile2D("FedAvgTimingEEM_RunB","Crystal Time EE- RunB", 100, 0., 100., 100, 0, 100);
+  //ccutimeEEMrunB = new TProfile2D("ccutimeEEMrunB","CCU Mean Time Shift[ns] EE- RunB", 20,0., 100, 20, 0,100);
   
   
   // Xatl time Vs Amplitude EB and EE
@@ -1775,7 +1781,7 @@ void AdjustEcalTimingFromLaser::GetCCUIdandTimeshiftTProfileHist(TProfile2D* myp
 	  for(int ny = 1; ny <  nybins+1; ny++)  // ieta bin
 	    {
 	      
-	      int bin      = myprof->GetBin(nx,ny);
+	      int   bin      = myprof->GetBin(nx,ny);
 	      int   nentries = myprof->GetBinEntries(bin);
 	      float tshift   = 0; // initialise the time to zero
 	      
@@ -1851,7 +1857,9 @@ void AdjustEcalTimingFromLaser::GetCCUIdandTimeshiftTProfileHist(TProfile2D* myp
 	      for(int nx = 1; nx < nxbins+1; nx++)
 		{
 		  
-		  int   bin      = myprof->GetBin(ny,nx);
+		  //int   bin      = myprof->GetBin(ny,nx); // is this RIGHT? ny, nx????
+		  // what if I flip those two???
+		  int   bin      = myprof->GetBin(nx,ny); // is this RIGHT? ny, nx????
 		  int   nentries = myprof->GetBinEntries(bin);
 		  float tshift   = 0; // initialise the time to zero
 		  
@@ -1863,8 +1871,10 @@ void AdjustEcalTimingFromLaser::GetCCUIdandTimeshiftTProfileHist(TProfile2D* myp
 		  if ( tshift < (timeValueNoData+1)) continue;
 
 		  // create a 'representative' crystal within the bin
-		  int ix = myprof->GetXaxis()->GetBinLowEdge(nx)+1;
-		  int iy = myprof->GetYaxis()->GetBinLowEdge(ny)+1;
+		  //int ix = myprof->GetXaxis()->GetBinLowEdge(nx)+1;
+		  //int iy = myprof->GetYaxis()->GetBinLowEdge(ny)+1;
+		  int ix = myprof->GetXaxis()->GetBinLowEdge(nx);
+		  int iy = myprof->GetYaxis()->GetBinLowEdge(ny);
 		  
 		  // skip Bad ix and iy values:
 		  if(ix < 1 || ix > 100 || iy < 1 || iy > 100) continue;
@@ -1902,13 +1912,14 @@ void AdjustEcalTimingFromLaser::GetCCUIdandTimeshiftTProfileHist(TProfile2D* myp
 					    << "\t iSMee: " << iSMee
 					    << " Gloobal Bin " << bin << " has entries " << nentries 
 					    << " and bin number nx, ny = " << nx << ", " << ny 
-					    << "\t and ix, iy = " << ix << ", " << iy  
+					    << "\t and ix, iy, iz = " << ix << ", " << iy  <<  ", " << iz
+					    << "\t CCUIdEE: " << CCUIdEE
 					    << "\ttshift: " << tshift <<  endl;
 
 		}// loop nx
 	}// loop ny
       
-      if (doDebugMessages)  std::cout << "size of CCUIdee is: " << CCUIdVecEE.size() << std::endl;
+      if (doDebugMessages)  std::cout << "\nsize of CCUIdee is: " << CCUIdVecEE.size() << std::endl;
       if(CCUIdee.is_open()){ 
 	if (doDebugMessages)  cout << "CCUIdEE File is open, write for fed: " << myprof->GetName()  << endl;
 	//Write EE CCUs
