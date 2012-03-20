@@ -70,6 +70,9 @@ process.demo = cms.EDAnalyzer('AdjustEcalTimingFromLaser',
                               maxTimeDifferenceUsedForAverage  = cms.double(30.),
                              
                               doHwSetFromDb               = cms.bool(False),
+                              operateInDumpMode	          = cms.bool(False),                              
+
+                              xmlFileNameBeg  = cms.string("xml-fromLaser"),
                               
 )
 
