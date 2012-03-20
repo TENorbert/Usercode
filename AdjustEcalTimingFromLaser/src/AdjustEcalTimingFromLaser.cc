@@ -13,7 +13,7 @@
 //
 // Original Author:  Tambe_Ebai_Norber_+_Giovanni_(UMN) 
 //         Created:  Fri Mar  9 14:33:49 CET 2012
-// $Id: AdjustEcalTimingFromLaser.cc,v 1.15 2012/03/20 14:49:09 franzoni Exp $
+// $Id: AdjustEcalTimingFromLaser.cc,v 1.16 2012/03/20 15:00:53 franzoni Exp $
 //
 //
 
@@ -195,6 +195,7 @@ private:
   TH1F* EBCCU1dprojection[numEBFed];
   TH1F* EEPCCU1dprojection[numSC];
   TH1F* EEMCCU1dprojection[numSC];
+
   // NewHist for 5by5 binning
   //runA
   TProfile2D* ccutimeEBrunA;
@@ -214,12 +215,6 @@ private:
   TH1F* EEMccu1dprojection;
 
   ///// 1D ccu timing here!
-
-  // Now Fill CCU histograms:
-  // TH1F* ccuInFedEBtimeRunA[EBMaxSM][maxNumCCUInFed];
-  // TH1F* ccuInFedEBtimeRunB[EBMaxSM][maxNumCCUInFed];
-  // TH1F* ccuInFedEBtimeshift[EBMaxSM][maxNumCCUInFed];
-
 
   // EB
   TH1F* ccuInFedEBtimeRunA[EBMaxSM];
@@ -303,6 +298,8 @@ private:
   float feShiftsForNewSettingsEE[maxEEsm][EcalTrigTowerDetId::kEBTowersPerSM+2];
 
   bool doHwSetFromDb;
+  bool operateInDumpMode;
+  std::string xmlFileNameBeg;
 
 };
 
@@ -321,8 +318,9 @@ AdjustEcalTimingFromLaser::AdjustEcalTimingFromLaser(const edm::ParameterSet& iC
   binlow  ( iConfig.getParameter<double>("binlow") ) ,
   binhigh ( iConfig.getParameter<double>("binhigh") ) ,
   lbin    ( iConfig.getParameter<double>("lbin") ) ,
-  hbin    ( iConfig.getParameter<double>("hbin") ) 
-
+  hbin    ( iConfig.getParameter<double>("hbin") ) ,
+  operateInDumpMode	(iConfig.getParameter<bool>("operateInDumpMode")),
+  xmlFileNameBeg (iConfig.getParameter<std::string>("XMLFileNameBeg"))
 {
   //now do what ever initialization is needed
   dirOutPutPlotsname+="/";
@@ -351,18 +349,9 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
   // initialize geometry to be used to retrieve CCU id's and various other numbers
   Numbers::initGeometry(iSetup,true);
 
-  // define which laser wavelength is being considered   
-  // const int NWL=NWLtmp;
-  // const int maxNumCCUInFed = EcalTrigTowerDetId::kEBTowersPerSM;
-  // const int mxNumXtalInCCU = 25;
-  const int numSC = 9;
-  
+  const int numSC = 9;  
   ntu_xtals x;
 
-  // const int ebwl[] = { 440, 800 };
-  // const int eewl[] = { 440, 455, 617 };
-  
-  
   // int * wl = NULL, nwl = 0;
   int nwl= 0;
   //TChain * tx = new TChain("x");
@@ -758,24 +747,13 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
     {
       for( int jj = 0; jj < maxNumCCUInFed; jj++)
 	{
-	  //for ( int crys = 0; crys < maxXtalInCCU; crys++)
-	  //  {
-	  
-	  //ccuInFedEBtimeshift[ii][jj]->Fill( (CCUInFedTimesEB_runA[ii][jj]/ CCUInFedNumEntriesEB_runA[ii][jj]) - (CCUInFedTimesEB_runB[ii][jj]/ CCUInFedNumEntriesEB_runB[ii][jj]) );
-	  //ccuInFedEBtimeshift[ii]->Fill( (CCUInFedTimesEB_runA[ii][jj]/ CCUInFedNumEntriesEB_runA[ii][jj]) - (CCUInFedTimesEB_runB[ii][jj]/ CCUInFedNumEntriesEB_runB[ii][jj]) );
-	  //	  ccuInFedEBtimeshift[ii]->Fill( (CCUInFedTimesEB_runA[ii][jj]/maxXtalInCCU ) - (CCUInFedTimesEB_runB[ii][jj]/maxXtalInCCU ) );
-	    ccuInFedEBtimeshift[ii]->Fill( ((CCUInFedNumEntriesEB_runA[ii][jj]!=0) ? CCUInFedTimesEB_runA[ii][jj]/ CCUInFedNumEntriesEB_runA[ii][jj] : 0 ) - ((CCUInFedNumEntriesEB_runB[ii][jj]!=0) ? CCUInFedTimesEB_runB[ii][jj]/ CCUInFedNumEntriesEB_runB[ii][jj] : 0 ) );
-	  //ccuInFedEBtimeshift[ii][jj] = subtracthist(ccuInFedEBtimeRunA[ii][jj],ccuInFedEBtimeRunB[ii][jj] );
-	  //  }
-	  
-		//	ebccutimedistshift->Fill( (CCUInFedTimesEB_runA[ii][jj]/maxXtalInCCU ) - (CCUInFedTimesEB_runB[ii][jj]/maxXtalInCCU ));
-		ebccutimedistshift->Fill(((CCUInFedNumEntriesEB_runA[ii][jj]!=0) ? CCUInFedTimesEB_runA[ii][jj]/ CCUInFedNumEntriesEB_runA[ii][jj] : 0 ) - ((CCUInFedNumEntriesEB_runB[ii][jj]!=0) ? CCUInFedTimesEB_runB[ii][jj]/ CCUInFedNumEntriesEB_runB[ii][jj] : 0 ) );
-	}
-	  //    Savehist(ccuInFedEBtimeshift[ii]);
-    }
 
-  // Savehist(ebccutimedistshift); // 1D dist of all CCUs in EB
- 
+	    ccuInFedEBtimeshift[ii]->Fill( ((CCUInFedNumEntriesEB_runA[ii][jj]!=0) ? CCUInFedTimesEB_runA[ii][jj]/ CCUInFedNumEntriesEB_runA[ii][jj] : 0 ) - ((CCUInFedNumEntriesEB_runB[ii][jj]!=0) ? CCUInFedTimesEB_runB[ii][jj]/ CCUInFedNumEntriesEB_runB[ii][jj] : 0 ) );
+
+		ebccutimedistshift->Fill(((CCUInFedNumEntriesEB_runA[ii][jj]!=0) ? CCUInFedTimesEB_runA[ii][jj]/ CCUInFedNumEntriesEB_runA[ii][jj] : 0 ) - ((CCUInFedNumEntriesEB_runB[ii][jj]!=0) ? CCUInFedTimesEB_runB[ii][jj]/ CCUInFedNumEntriesEB_runB[ii][jj] : 0 ) );
+
+	}
+    }
 
   // Fill 1D hist for EEP and EEM
 
@@ -829,24 +807,15 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
       for( int ccu = 0; ccu < maxNumCCUInFed; ccu++)
 	{
 	  // For EEM
-	  //	  ccuInFedEEMtimeshift[sm]->Fill((CCUInFedTimesEEM_runA[sm][ccu]/maxXtalInCCU) - (CCUInFedTimesEEM_runB[sm][ccu]/maxXtalInCCU));     // Still   has work to do here!
 	  ccuInFedEEMtimeshift[sm]->Fill(((CCUInFedNumEntriesEEM_runA[sm][ccu]!=0) ? CCUInFedTimesEEM_runA[sm][ccu]/ CCUInFedNumEntriesEEM_runA[sm][ccu] : 0) - ((CCUInFedNumEntriesEEM_runB[sm][ccu]!=0) ? CCUInFedTimesEEM_runB[sm][ccu]/ CCUInFedNumEntriesEEM_runB[sm][ccu] : 0));
-	  //	  eemccutimedistshift->Fill((CCUInFedTimesEEM_runA[sm][ccu]/maxXtalInCCU) - (CCUInFedTimesEEM_runB[sm][ccu]/maxXtalInCCU)); // all ccus in EEM time shift
+
 	  eemccutimedistshift->Fill(((CCUInFedNumEntriesEEM_runA[sm][ccu]!=0) ? CCUInFedTimesEEM_runA[sm][ccu]/ CCUInFedNumEntriesEEM_runA[sm][ccu] : 0) - ((CCUInFedNumEntriesEEM_runB[sm][ccu]!=0) ? CCUInFedTimesEEM_runB[sm][ccu]/ CCUInFedNumEntriesEEM_runB[sm][ccu] : 0)); 
-		  // for EEP
-		  //		  ccuInFedEEPtimeshift[sm]->Fill((CCUInFedTimesEEP_runA[sm][ccu]/maxXtalInCCU) - (CCUInFedTimesEEP_runB[sm][ccu]/maxXtalInCCU));     // Still   has work to do here!
+
 	  ccuInFedEEPtimeshift[sm]->Fill(((CCUInFedNumEntriesEEP_runA[sm][ccu]!=0) ? CCUInFedTimesEEP_runA[sm][ccu]/ CCUInFedNumEntriesEEP_runA[sm][ccu] : 0) - ((CCUInFedNumEntriesEEP_runB[sm][ccu]!=0) ? CCUInFedTimesEEP_runB[sm][ccu]/ CCUInFedNumEntriesEEP_runB[sm][ccu] : 0));
-	 
-	  //	  eepccutimedistshift->Fill((CCUInFedTimesEEP_runA[sm][ccu]/maxXtalInCCU) - (CCUInFedTimesEEP_runB[sm][ccu]/maxXtalInCCU)); // all ccus in EEP time shift
+
 	  eepccutimedistshift->Fill(((CCUInFedNumEntriesEEP_runA[sm][ccu]!=0) ? CCUInFedTimesEEP_runA[sm][ccu]/ CCUInFedNumEntriesEEP_runA[sm][ccu] : 0) - ((CCUInFedNumEntriesEEP_runB[sm][ccu]!=0) ? CCUInFedTimesEEP_runB[sm][ccu]/ CCUInFedNumEntriesEEP_runB[sm][ccu] : 0));
 	}
-	  //     Savehist(ccuInFedEEMtimeshift[sm]);
-	  //     Savehist(ccuInFedEEPtimeshift[sm]);
     }
-
-  // 1D  dist of all CCUs in EEP and EEM
-  //  Savehist(eemccutimedistshift);
-  //  Savehist(eepccutimedistshift);
 
 
   ////// Calculate CCU Time Shifts Here!////////
@@ -1020,11 +989,8 @@ AdjustEcalTimingFromLaser::beginJob()
       
     }
   
-
-
-
   // for ccu 1D Time shift:
-  
+ 
   for( int ii = 0; ii < EBMaxSM; ii++)
     {
       //  for( int jj = 0; jj < maxNumCCUInFed; jj++)
@@ -1033,9 +999,7 @@ AdjustEcalTimingFromLaser::beginJob()
 	  ccuname += ConvertIntToString(Numbers::iEB(ii+1));
 	  ccuname += " Fed ";
       ccuname += ConvertIntToString(ii + 610);
-      //  ccuname += "_CCU_";
-      //  ccuname += ConvertIntToString(jj);
-      //  ccuInFedEBtimeshift[ii][jj] = new TH1F(ccuname.c_str(), ccuname.c_str(), 100, -25.0, 25.0);
+
       ccuInFedEBtimeshift[ii] = new TH1F(ccuname.c_str(), ccuname.c_str(), 100, -25.0, 25.0);
       //}
     }
@@ -1230,25 +1194,17 @@ AdjustEcalTimingFromLaser::beginJob()
   //EE plus
   //Run A
   FedAvgTimingEEP = new TProfile2D("FedAvgTimingEEP","Crystal Time EE+", 100, 1., 101., 100, 1., 101);
-  //FedAvgTimingEEP = new TProfile2D("FedAvgTimingEEP","Crystal Time EE+", 100, 0., 100., 100, 0, 100);
   ccutimeEEPrunA = new TProfile2D("ccutimeEEPrunA","CCU Mean Time Shift[ns] EE+", 20,1, 101, 20, 1,101);
-  //ccutimeEEPrunA = new TProfile2D("ccutimeEEPrunA","CCU Mean Time Shift[ns] EE+", 20,0., 100, 20, 0,100);
   //Run B
   FedAvgTimingEEP_RunB = new TProfile2D("FedAvgTimingEEP_RunB","Crystal Time EE+ RunB", 100, 1., 101., 100, 1, 101);
-  //FedAvgTimingEEP_RunB = new TProfile2D("FedAvgTimingEEP_RunB","Crystal Time EE+ RunB", 100, 0., 100., 100, 0, 100);
   ccutimeEEPrunB = new TProfile2D("ccutimeEEPrunB","CCU Mean Time Shift[ns] EE+ RunB", 20,1, 101, 20, 1,101);
-  //ccutimeEEPrunB = new TProfile2D("ccutimeEEPrunB","CCU Mean Time Shift[ns] EE+ RunB", 20,0., 100, 20, 0,100);
   //EE minus
   //  Run A
   FedAvgTimingEEM = new TProfile2D("FedAvgTimingEEM","Crystal Time EE-", 100, 1., 101., 100, 1, 101);
   ccutimeEEMrunA = new TProfile2D("ccutimeEEMrunA","CCU Mean Time Shift[ns] EE-", 20,1., 101, 20, 1,101);
-  //FedAvgTimingEEM = new TProfile2D("FedAvgTimingEEM","Crystal Time EE-", 100, 0., 100., 100, 0, 100);
-  //ccutimeEEMrunA = new TProfile2D("ccutimeEEMrunA","CCU Mean Time Shift[ns] EE-", 20,0., 100, 20, 0,100);
   // run B
   FedAvgTimingEEM_RunB = new TProfile2D("FedAvgTimingEEM_RunB","Crystal Time EE- RunB", 100, 1, 101, 100, 1, 101);
   ccutimeEEMrunB = new TProfile2D("ccutimeEEMrunB","CCU Mean Time Shift[ns] EE- RunB", 20,1, 101, 20, 1,101);
-  //FedAvgTimingEEM_RunB = new TProfile2D("FedAvgTimingEEM_RunB","Crystal Time EE- RunB", 100, 0., 100., 100, 0, 100);
-  //ccutimeEEMrunB = new TProfile2D("ccutimeEEMrunB","CCU Mean Time Shift[ns] EE- RunB", 20,0., 100, 20, 0,100);
   
   
   // Xatl time Vs Amplitude EB and EE
@@ -1745,7 +1701,7 @@ void AdjustEcalTimingFromLaser::GetCCUIdandTimeshiftTProfileHist(TProfile2D* myp
 	      
 	      CCUIdVecEB.push_back(CCUIdEB);	
 	      CCUIdTimeEB.push_back(tshift);
-	      if( (iSM-1)>=EBDetId::MAX_SM || (CCUIdEB-1)>=EcalTrigTowerDetId::kEBTowersPerSM) {
+	      if( (iSM-1)>=EBDetId::MAX_SM || (CCUIdEB-1)>=(EcalTrigTowerDetId::kEBTowersPerSM+2)) {
 		std::cout << "filling EB array outside of bounds. Bailing out. iSM: " << iSM << " CCUIdEB: " << CCUIdEB << std::endl;
 		assert(0);		  }
 	      else { 	      feShiftsForNewSettingsEB[iSM-1][CCUIdEB-1] = tshift;  feShiftsCounterEB++;}
@@ -1823,7 +1779,7 @@ void AdjustEcalTimingFromLaser::GetCCUIdandTimeshiftTProfileHist(TProfile2D* myp
 	    
 		  CCUIdVecEE.push_back(CCUIdEE);
 		  CCUIdTimeEE.push_back(tshift);
-		  if( (iSMee-1)>=maxEEsm || (CCUIdEE-1)>=EcalTrigTowerDetId::kEBTowersPerSM) {
+		  if( (iSMee-1)>=maxEEsm || (CCUIdEE-1)>=(EcalTrigTowerDetId::kEBTowersPerSM+2)) {
 		    std::cout << "filling EE array outside of bounds. Bailing out. iSMee: " << iSMee << " CCUIdEE: " << CCUIdEE << std::endl;
 		    assert(0);		  }
 		  else{ 		  feShiftsForNewSettingsEE[iSMee-1][CCUIdEE-1] = tshift; feShiftsCounterEE++;}
@@ -2510,12 +2466,12 @@ void AdjustEcalTimingFromLaser::readHwSettingsFromDb()
 	
 	int ccuId = i->getTTId();
 	
-	std::cout << "getting db - idcc: " << idcc << " ism: " << ism << " ccuId: " << ccuId << " offset: " << i->getTimeOffset() << std::endl;
+	if (doDebugMessages)  std::cout << "getting db - idcc: " << idcc << " ism: " << ism << " ccuId: " << ccuId << " offset: " << i->getTimeOffset() << std::endl;
 	
 	if(idcc >= 10 && idcc <= 45) // EB
 	  {
 	    if(feDelaysFromDBEB[ism-1][ccuId-1] != -999999)
-	      std::cout << "warning: duplicate entry in DB found for fed: " << idcc+600
+	      std::cout << "++ warning: duplicate entry in DB found for fed: " << idcc+600
 			<< " CCU: " << ccuId << "; replacing old entry with this one." << std::endl;
 	    feDelaysFromDBEB[ism-1][ccuId-1] = i->getTimeOffset();
 	      }
@@ -2548,7 +2504,149 @@ void AdjustEcalTimingFromLaser::readHwSettingsFromDb()
 void AdjustEcalTimingFromLaser::makeXmlFiles()
 {
   std::cout << "making xml files" << std::endl;;
-}
+
+  // from SIC
+  // now we should have the filled DB array
+  // loop over the old ttAvgTimes arrays and adjust
+  // recall that we have +1*avgTT time in the ttAvgTimes arrays (i.e., the needed shift)
+  // so here just add that to the DB delays
+  // make new arrays for absolute time
+  // one 24 hardware counts correspond to 25 ns => rescale averages by 24./25.
+
+  int newFEDelaysEB[EBDetId::MAX_SM][EcalTrigTowerDetId::kEBTowersPerSM+2];
+  int newFEDelaysEE[maxEEsm][EcalTrigTowerDetId::kEBTowersPerSM+2];
+  for(int i=0; i<EBDetId::MAX_SM; ++i)
+  {
+    for(int j=0; j<(EcalTrigTowerDetId::kEBTowersPerSM+2); ++j)
+    {
+      if (!operateInDumpMode)  newFEDelaysEB[i][j] = feShiftsForNewSettingsEB[i][j] + feDelaysFromDBEB[i][j];
+      else                     newFEDelaysEB[i][j] = feDelaysFromDBEB[i][j];
+    }
+  }
+  // create avg tower times -- EE
+  for(int i=0; i<maxEEsm; ++i)
+  {
+    for(int j=0; j<(EcalTrigTowerDetId::kEBTowersPerSM+2); ++j)
+    {
+      if (!operateInDumpMode)  newFEDelaysEE[i][j] = feShiftsForNewSettingsEE[i][j] + feDelaysFromDBEE[i][j];
+      else                     newFEDelaysEE[i][j] = feDelaysFromDBEE[i][j];
+    }
+  }
+
+
+
+
+  /////////////////////////////////////////////////////////////	
+  // write output
+ // ofstream txt_outfile;
+ // txt_outfile.open(txtFileName_.c_str(),ios::out);
+ // txt_outfile << "#  Needed shift in terms of samples and fine tuning (ns) for each TT"
+ //   << endl;
+ // txt_outfile << "#   shift" << std::endl;
+
+  // EB
+  for(int ism=1; ism<=EBDetId::MAX_SM; ++ism)
+  {
+    for(int iTT=1;iTT<69;++iTT)   // ignoring two mem boxes ONLY for the text file
+    {
+      if(fabs(feShiftsForNewSettingsEB[ism-1][iTT-1]) > 1)
+        cout << "WARNING: Unusually large shift found!  SM=" << 609+ism
+          << " " << Numbers::sEB(ism) << " iTT=" << iTT
+        << " shift: " << feShiftsForNewSettingsEB[ism-1][iTT-1] << endl;  
+    }
+
+    // XMLs
+    ofstream xml_outfile;
+    string xmlFileName = xmlFileNameBeg;
+    xmlFileName+=ConvertIntToString(609+ism);
+    xmlFileName+=".xml";
+    xml_outfile.open(xmlFileName.c_str(),ios::out);
+
+    xml_outfile << "<delayOffsets>" << endl;
+    xml_outfile << " <DELAY_OFFSET_RELEASE VERSION_ID = \"SM" << 609+ism <<" _VER1\"> \n";
+    xml_outfile << "      <RELEASE_ID>RELEASE_1</RELEASE_ID>\n";
+    xml_outfile << "             <SUPERMODULE>" << 609+ism << "</SUPERMODULE>\n";
+    xml_outfile << "     <TIME_STAMP> 270705 </TIME_STAMP>" << endl;
+
+    for(int j=68; j<EcalTrigTowerDetId::kEBTowersPerSM+2; ++j)
+    {
+      if(feDelaysFromDBEB[ism-1][j] == -999999 ) continue;     // if db did not give this CCU at the start, don't out put it
+      xml_outfile << "   <DELAY_OFFSET>\n";
+      xml_outfile << "             <SUPERMODULE>" << 609+ism <<"</SUPERMODULE>\n";
+      xml_outfile << "             <TRIGGERTOWER>" << j+1 << "</TRIGGERTOWER>\n";
+      xml_outfile << "             <TIME_OFFSET>" << newFEDelaysEB[ism-1][j] << "</TIME_OFFSET>\n";
+      xml_outfile << "    </DELAY_OFFSET>" << endl;
+    }
+    for(int j=0; j<(EcalTrigTowerDetId::kEBTowersPerSM+2-2); ++j)
+    {
+      if(feDelaysFromDBEB[ism-1][j] == -999999 ) continue;     // if db did not give this CCU at the start, don't out put it
+      xml_outfile << "   <DELAY_OFFSET>\n";
+      xml_outfile << "             <SUPERMODULE>" << 609+ism <<"</SUPERMODULE>\n";
+      xml_outfile << "             <TRIGGERTOWER>" << j+1 << "</TRIGGERTOWER>\n";
+      xml_outfile << "             <TIME_OFFSET>" << newFEDelaysEB[ism-1][j] << "</TIME_OFFSET>\n";
+      xml_outfile << "    </DELAY_OFFSET>" << endl;
+    }
+    xml_outfile << " </DELAY_OFFSET_RELEASE>" << endl;
+    xml_outfile << "</delayOffsets>" << endl;
+    xml_outfile.close();
+  }
+
+  // EE
+  for(int ism=1; ism<=maxEEsm; ++ism)
+  {
+    int iDCC = ism<=9 ? ism : ism + 45 - 9;
+
+    for(int iSC=0; iSC<68; ++iSC)   // ignoring two mem boxes ONLY for the text file
+    {
+      if(feDelaysFromDBEE[ism-1][iSC] == -999999 ) continue;     // if db did not give this CCU at the start, don't out put it
+      if(fabs(feShiftsForNewSettingsEE[ism-1][iSC]) > 1)
+        cout << "WARNING: Unusually large shift found!  SM=" << 600+iDCC
+          << " " << Numbers::sEE(ism) << " iSC=" << (iSC+1)
+          << " shift: " << feShiftsForNewSettingsEE[ism-1][iSC] << endl;
+    }
+
+    // XMLs
+    ofstream xml_outfile;
+    string xmlFileName = xmlFileNameBeg;
+    xmlFileName+=ConvertIntToString(600+iDCC);
+    xmlFileName+=".xml";
+    xml_outfile.open(xmlFileName.c_str(),ios::out);
+
+    xml_outfile << "<delayOffsets>" << endl;
+    xml_outfile << " <DELAY_OFFSET_RELEASE VERSION_ID = \"SM" << 600+iDCC <<" _VER1\"> \n";
+    xml_outfile << "      <RELEASE_ID>RELEASE_1</RELEASE_ID>\n";
+    xml_outfile << "             <SUPERMODULE>" << 600+iDCC << "</SUPERMODULE>\n";
+    xml_outfile << "     <TIME_STAMP> 270705 </TIME_STAMP>" << endl;
+
+    for(int j=68; j<EcalTrigTowerDetId::kEBTowersPerSM+2; ++j)
+    {
+      if(feDelaysFromDBEE[ism-1][j] == -999999 ) continue;     // if db did not give this CCU at the start, don't out put it
+      xml_outfile << "   <DELAY_OFFSET>\n";
+      xml_outfile << "             <SUPERMODULE>" << 600+iDCC <<"</SUPERMODULE>\n";
+      xml_outfile << "             <TRIGGERTOWER>" << j+1 << "</TRIGGERTOWER>\n";
+      xml_outfile << "             <TIME_OFFSET>" << newFEDelaysEE[ism-1][j] << "</TIME_OFFSET>\n";
+      xml_outfile << "    </DELAY_OFFSET>" << endl;
+    }
+    for(int j=0; j<68; ++j)
+    {
+      if(feDelaysFromDBEE[ism-1][j] == -999999 ) continue;     // if db did not give this CCU at the start, don't out put it
+      xml_outfile << "   <DELAY_OFFSET>\n";
+      xml_outfile << "             <SUPERMODULE>" << 600+iDCC <<"</SUPERMODULE>\n";
+      xml_outfile << "             <TRIGGERTOWER>" << j+1 << "</TRIGGERTOWER>\n";
+      xml_outfile << "             <TIME_OFFSET>" << newFEDelaysEE[ism-1][j] << "</TIME_OFFSET>\n";
+      xml_outfile << "    </DELAY_OFFSET>" << endl;
+    }
+    xml_outfile << " </DELAY_OFFSET_RELEASE>" << endl;
+    xml_outfile << "</delayOffsets>" << endl;
+    xml_outfile.close();
+  }
+
+
+
+
+
+}// end makeXml
+
 
 
 
@@ -2570,13 +2668,7 @@ TH1F* AdjustEcalTimingFromLaser::make1dProjection(TProfile2D* hprof)
 {
   int NXentries = hprof->GetNbinsX();
   int NYentries = hprof->GetNbinsY();
-  //  std::string histtitle;
-  //char histname;
-  //  histtitle += "Projection of";
-  // histtitle = hprof->GetTitle();
-  // histname += '1DProjectionOf';
-  //  histname += hprof->GetName();
-  // New Entry it gets at end;
+
   int Nentry = 0;
   
   TH1F* tproject = new TH1F( (std::string("projection ") + std::string(hprof->GetTitle()) ).c_str()  ,  (std::string("1d ") + std::string(hprof->GetTitle()) ).c_str()  ,20,-5.0, 5.0);
