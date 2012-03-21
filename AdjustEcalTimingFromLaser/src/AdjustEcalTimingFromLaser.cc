@@ -13,7 +13,7 @@
 //
 // Original Author:  Tambe_Ebai_Norber_+_Giovanni_(UMN) 
 //         Created:  Fri Mar  9 14:33:49 CET 2012
-// $Id: AdjustEcalTimingFromLaser.cc,v 1.18 2012/03/21 10:51:51 franzoni Exp $
+// $Id: AdjustEcalTimingFromLaser.cc,v 1.19 2012/03/21 10:57:06 franzoni Exp $
 //
 //
 
@@ -66,6 +66,7 @@
 
 #define bx2nanosecond   25.
 #define nominalTimeInBx 5.
+#define nsToHwCount     24./25.
 
 const int numEBFed       = 36;
 const int mxNumXtalInCCU = 25;
@@ -136,7 +137,7 @@ private:
   float binlow, binhigh;
   float lbin, hbin;
   float maxTimeDifferenceUsedForAverage;
-  
+  float minTimeChangeToApply;
 
   // the chain which will be used to hold all the ntuples
   TChain * tx;
@@ -313,6 +314,7 @@ AdjustEcalTimingFromLaser::AdjustEcalTimingFromLaser(const edm::ParameterSet& iC
   doDebugMessages ( iConfig.getParameter<bool>("doDebugMessages") ) ,
   subtractAverageDifferences  ( iConfig.getParameter<bool>("subtractAverageDifferences") ) ,
   maxTimeDifferenceUsedForAverage  ( iConfig.getParameter<double>("maxTimeDifferenceUsedForAverage") ) ,
+  minTimeChangeToApply  ( iConfig.getParameter<double>("minTimeChangeToApply") ) ,
   doHwSetFromDb ( iConfig.getParameter<bool>("doHwSetFromDb") ) ,
   NWLtmp  ( iConfig.getParameter<int>("NWL") ) ,
   binlow  ( iConfig.getParameter<double>("binlow") ) ,
@@ -2481,9 +2483,9 @@ void AdjustEcalTimingFromLaser::readHwSettingsFromDb()
 	else if( (idcc >= 1 && idcc <= 9) || (idcc >= 46 && idcc <= 54)) // EE
 	  {
 	    if(feDelaysFromDBEE[ism-1][ccuId-1] != -999999)
-	      std::cout << "warning: duplicate entry in DB found for fed: " << idcc+600
-			<< " CCU: " << ccuId << "; replacing old entry with this one." << std::endl;
-
+	      {std::cout << "warning: duplicate entry in DB found for fed: " << idcc+600
+			 << " CCU: " << ccuId << "; replacing old entry with this one." << std::endl; }
+		
 	    feDelaysFromDBEE[ism-1][ccuId-1] = i->getTimeOffset();
 	    //std::cout << "GF debug EE: ism: " << ism << " ccuId: " << ccuId << " delay: " << i->getTimeOffset() << std::endl;
 	  }
@@ -2530,8 +2532,11 @@ void AdjustEcalTimingFromLaser::makeXmlFiles()
   {
     for(int j=0; j<(EcalTrigTowerDetId::kEBTowersPerSM+2); ++j)
     {
-      if (!operateInDumpMode)  newFEDelaysEB[i][j] = feShiftsForNewSettingsEB[i][j] + feDelaysFromDBEB[i][j];
-      else                     newFEDelaysEB[i][j] = feDelaysFromDBEB[i][j];
+      if (operateInDumpMode || fabs(feShiftsForNewSettingsEB[i][j])>maxTimeDifferenceUsedForAverage || fabs(feShiftsForNewSettingsEB[i][j])<minTimeChangeToApply) 
+	{     newFEDelaysEB[i][j] = feDelaysFromDBEB[i][j]; }
+      else
+	{     newFEDelaysEB[i][j] =  floor ( nsToHwCount*feShiftsForNewSettingsEB[i][j] +0.5 )  + feDelaysFromDBEB[i][j];}
+      //if (doDebugMessages) std::cout << "GF EB shift  ism: " << i << " "<< feShiftsForNewSettingsEB[i][j] << "\t feDelaysFromDBEB[i][j]: " << feDelaysFromDBEB[i][j] << "\t newFEDelaysEB[i][j]: " << newFEDelaysEB[i][j] << std::endl;
     }
   }
   // create avg tower times -- EE
@@ -2539,8 +2544,11 @@ void AdjustEcalTimingFromLaser::makeXmlFiles()
   {
     for(int j=0; j<(EcalTrigTowerDetId::kEBTowersPerSM+2); ++j)
     {
-      if (!operateInDumpMode)  newFEDelaysEE[i][j] = feShiftsForNewSettingsEE[i][j] + feDelaysFromDBEE[i][j];
-      else                     newFEDelaysEE[i][j] = feDelaysFromDBEE[i][j];
+      if (operateInDumpMode || fabs(feShiftsForNewSettingsEE[i][j])>maxTimeDifferenceUsedForAverage || fabs(feShiftsForNewSettingsEE[i][j])<minTimeChangeToApply )  
+	{ newFEDelaysEE[i][j] = feDelaysFromDBEE[i][j];}
+      else                                              
+	{ newFEDelaysEE[i][j] = floor ( nsToHwCount*feShiftsForNewSettingsEE[i][j] +0.5 ) + feDelaysFromDBEE[i][j];}
+      //if (doDebugMessages) std::cout << "GF EE shift ism: " << i << " " << feShiftsForNewSettingsEE[i][j] << "\t feDelaysFromDBEE[i][j]: " << feDelaysFromDBEE[i][j] << "\t newFEDelaysEE[i][j]: " << newFEDelaysEE[i][j] << std::endl;
     }
   }
 
@@ -2558,14 +2566,22 @@ void AdjustEcalTimingFromLaser::makeXmlFiles()
   // EB
   for(int ism=1; ism<=EBDetId::MAX_SM; ++ism)
   {
-    for(int iTT=1;iTT<69;++iTT)   // ignoring two mem boxes ONLY for the text file
-    {
-      if(fabs(feShiftsForNewSettingsEB[ism-1][iTT-1]) > 1)
-        cout << "WARNING: Unusually large shift found!  SM=" << 609+ism
-          << " " << Numbers::sEB(ism) << " iTT=" << iTT
-        << " shift: " << feShiftsForNewSettingsEB[ism-1][iTT-1] << endl;  
-    }
 
+    for(int iTT=1;iTT<69;++iTT)   // ignoring two mem boxes ONLY for the text file
+      {
+	if(fabs(feShiftsForNewSettingsEB[ism-1][iTT-1]) > 1) 
+	  {
+	    cout << "WARNING: Unusually large shift found!  SM=" << 609+ism
+		 << " " << Numbers::sEB(ism) << " iTT=" << iTT
+		 << " shift: " << feShiftsForNewSettingsEB[ism-1][iTT-1] << endl; 
+	    if(fabs(feShiftsForNewSettingsEB[ism-1][iTT-1])>maxTimeDifferenceUsedForAverage ) { 
+	      std::cout << "... since the large shift found EB is larger than maxTimeDifferenceUsedForAverage ( " << maxTimeDifferenceUsedForAverage 
+			<< " ) it typically means the CCU avearage could not be computed (is  it -999999?). "
+			<< " As such it won't be used to modify xml, which will be left unmodified." << std::endl;
+	    }
+	  }
+      }
+    
     // XMLs
     ofstream xml_outfile;
     string xmlFileName = dirOutPutPlotsname+std::string("xml/")+ xmlFileNameBeg;
@@ -2608,14 +2624,25 @@ void AdjustEcalTimingFromLaser::makeXmlFiles()
     int iDCC = ism<=9 ? ism : ism + 45 - 9;
 
     for(int iSC=0; iSC<68; ++iSC)   // ignoring two mem boxes ONLY for the text file
-    {
-      if(feDelaysFromDBEE[ism-1][iSC] == -999999 ) continue;     // if db did not give this CCU at the start, don't out put it
-      if(fabs(feShiftsForNewSettingsEE[ism-1][iSC]) > 1)
-        cout << "WARNING: Unusually large shift found!  SM=" << 600+iDCC
-          << " " << Numbers::sEE(ism) << " iSC=" << (iSC+1)
-          << " shift: " << feShiftsForNewSettingsEE[ism-1][iSC] << endl;
-    }
+      {
 
+	if(feDelaysFromDBEE[ism-1][iSC] == -999999 ) continue;     // if db did not give this CCU at the start, don't out put it
+	
+	if(fabs(feShiftsForNewSettingsEE[ism-1][iSC]) > 1)
+	  {
+	    cout << "WARNING: Unusually large shift found!  SM=" << 600+iDCC
+		 << " " << Numbers::sEE(ism) << " iSC=" << (iSC+1)
+		 << " shift: " << feShiftsForNewSettingsEE[ism-1][iSC] << endl; 
+	    if( fabs(feShiftsForNewSettingsEE[ism-1][iSC]) >maxTimeDifferenceUsedForAverage  )
+	      { 
+		std::cout << "... since the large shift found EB is larger than maxTimeDifferenceUsedForAverage ( " << maxTimeDifferenceUsedForAverage 
+			  << " ) it typically means the CCU avearage could not be computed (is  it -999999?). "
+			  << " As such it won't be used to modify xml, which will be left unmodified." << std::endl;
+	      }
+	  }
+      }
+    
+    
     // XMLs
     ofstream xml_outfile;
     string   xmlFileName = dirOutPutPlotsname+std::string("xml/")+ xmlFileNameBeg;
