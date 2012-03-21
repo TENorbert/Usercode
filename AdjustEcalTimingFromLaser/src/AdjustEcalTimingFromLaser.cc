@@ -13,7 +13,7 @@
 //
 // Original Author:  Tambe_Ebai_Norber_+_Giovanni_(UMN) 
 //         Created:  Fri Mar  9 14:33:49 CET 2012
-// $Id: AdjustEcalTimingFromLaser.cc,v 1.19 2012/03/21 10:57:06 franzoni Exp $
+// $Id: AdjustEcalTimingFromLaser.cc,v 1.20 2012/03/21 17:39:47 franzoni Exp $
 //
 //
 
@@ -1721,7 +1721,7 @@ void AdjustEcalTimingFromLaser::GetCCUIdandTimeshiftTProfileHist(TProfile2D* myp
 	}//nx
       
       if(CCUIdeb.is_open()){ 
-	cout << "CCUIdEB File is open write in it" <<endl;
+	if (doDebugMessages) cout << "CCUIdEB File is open write in it" <<endl;
 	// write EB CCUs
 	if(CCUIdVecEB.size()==CCUIdTimeEB.size())
 	  {
@@ -1820,8 +1820,8 @@ void AdjustEcalTimingFromLaser::GetCCUIdandTimeshiftTProfileHist(TProfile2D* myp
      
     } // end of filling vecs for EE
   
-  std::cout << "++ at the end of GetCCUIdandTimeshiftTProfileHist; arrays with shifts prepared: "
-	    << feShiftsCounterEB << " for EB and " << feShiftsCounterEE << " for EE" << std::endl;
+  if (doDebugMessages)  std::cout << "++ at the end of GetCCUIdandTimeshiftTProfileHist; arrays with shifts prepared: "
+				  << feShiftsCounterEB << " for EB and " << feShiftsCounterEE << " for EE" << std::endl;
 
 } // end of fxn to GetCCUId and TimeShift.
 
@@ -2575,7 +2575,7 @@ void AdjustEcalTimingFromLaser::makeXmlFiles()
 		 << " " << Numbers::sEB(ism) << " iTT=" << iTT
 		 << " shift: " << feShiftsForNewSettingsEB[ism-1][iTT-1] << endl; 
 	    if(fabs(feShiftsForNewSettingsEB[ism-1][iTT-1])>maxTimeDifferenceUsedForAverage ) { 
-	      std::cout << "... since the large shift found EB is larger than maxTimeDifferenceUsedForAverage ( " << maxTimeDifferenceUsedForAverage 
+	      std::cout << "      since the large shift found EB is larger than maxTimeDifferenceUsedForAverage ( " << maxTimeDifferenceUsedForAverage 
 			<< " ) it typically means the CCU avearage could not be computed (is  it -999999?). "
 			<< " As such it won't be used to modify xml, which will be left unmodified." << std::endl;
 	    }
@@ -2635,9 +2635,9 @@ void AdjustEcalTimingFromLaser::makeXmlFiles()
 		 << " shift: " << feShiftsForNewSettingsEE[ism-1][iSC] << endl; 
 	    if( fabs(feShiftsForNewSettingsEE[ism-1][iSC]) >maxTimeDifferenceUsedForAverage  )
 	      { 
-		std::cout << "... since the large shift found EB is larger than maxTimeDifferenceUsedForAverage ( " << maxTimeDifferenceUsedForAverage 
-			  << " ) it typically means the CCU avearage could not be computed (is  it -999999?). "
-			  << " As such it won't be used to modify xml, which will be left unmodified." << std::endl;
+		if (doDebugMessages)  std::cout << "... since the large shift found EB is larger than maxTimeDifferenceUsedForAverage ( " << maxTimeDifferenceUsedForAverage 
+						<< " ) it typically means the CCU avearage could not be computed (is  it -999999?). "
+						<< " As such it won't be used to modify xml, which will be left unmodified." << std::endl;
 	      }
 	  }
       }
