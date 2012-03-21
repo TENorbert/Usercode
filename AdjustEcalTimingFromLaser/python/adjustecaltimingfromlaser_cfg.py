@@ -67,13 +67,25 @@ process.demo = cms.EDAnalyzer('AdjustEcalTimingFromLaser',
                               #    - a whole sector, for EE feds
                               #    - separately for the two laser light distribution modules (I-shaped and L-shaped) of EB supermodules 
                               subtractAverageDifferences       = cms.bool(True),
-                              maxTimeDifferenceUsedForAverage  = cms.double(30.),
-                             
-                              doHwSetFromDb               = cms.bool(False),
-                              operateInDumpMode	          = cms.bool(False),                              
 
-                              xmlFileNameBeg  = cms.string("xml-fromLaser"),
+                              # if a time difference is larger than this:
+                              # 1) exclude it from the computation of the light-module average
+                              # 2) don't use it to modify the hardware settings in the xml files
+                              maxTimeDifferenceUsedForAverage  = cms.double(30.),
+
+                              # if measured time shift is less than a certain amount, don't consider it for a change to the xml's
+                              minTimeChangeToApply = cms.double(1.),
                               
+
+                              # decide whether you want only to do  analysi (False) or also connect to the database and deploy xml files (True)
+                              doHwSetFromDb               = cms.bool(True),
+                              # if you decide to connect to the database and deploy xml files:
+                              # 1) have time-shift-corrected xml (True) or
+                              # 2) xml which are the an unmodified dump of what's in the confdb 
+                              operateInDumpMode	          = cms.bool(False),
+                              # prefix for xml files
+                              xmlFileNameBeg  = cms.string("xml-fromLaser"),
+
 )
 
 process.p = cms.Path(process.demo)
