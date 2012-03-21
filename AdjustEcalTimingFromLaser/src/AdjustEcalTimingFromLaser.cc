@@ -13,7 +13,7 @@
 //
 // Original Author:  Tambe_Ebai_Norber_+_Giovanni_(UMN) 
 //         Created:  Fri Mar  9 14:33:49 CET 2012
-// $Id: AdjustEcalTimingFromLaser.cc,v 1.17 2012/03/20 15:37:52 franzoni Exp $
+// $Id: AdjustEcalTimingFromLaser.cc,v 1.18 2012/03/21 10:51:51 franzoni Exp $
 //
 //
 
@@ -2448,9 +2448,7 @@ void AdjustEcalTimingFromLaser::readHwSettingsFromDb()
     }
     
     // for SIC, run was only one and determined by DQM file; in this case, chose runA
-    //RunIOV iov = econn->fetchRunIOV("P5_Co", runNum);
-    RunIOV iov = econn->fetchRunIOV("P5_Co", 163291);
-    //RunIOV iov = econn->fetchRunIOV("P5_Co", RunB4TS);
+    RunIOV iov = econn->fetchRunIOV("P5_Co", RunB4TS);
     
     std::list<ODDelaysDat> delays = econn->fetchFEDelaysForRun(&iov);
     std::list<ODDelaysDat>::const_iterator i = delays.begin();
