@@ -13,7 +13,7 @@
 //
 // Original Author:  Tambe_Ebai_Norber_+_Giovanni_(UMN) 
 //         Created:  Fri Mar  9 14:33:49 CET 2012
-// $Id: AdjustEcalTimingFromLaser.cc,v 1.16 2012/03/20 15:00:53 franzoni Exp $
+// $Id: AdjustEcalTimingFromLaser.cc,v 1.17 2012/03/20 15:37:52 franzoni Exp $
 //
 //
 
@@ -320,7 +320,7 @@ AdjustEcalTimingFromLaser::AdjustEcalTimingFromLaser(const edm::ParameterSet& iC
   lbin    ( iConfig.getParameter<double>("lbin") ) ,
   hbin    ( iConfig.getParameter<double>("hbin") ) ,
   operateInDumpMode	(iConfig.getParameter<bool>("operateInDumpMode")),
-  xmlFileNameBeg (iConfig.getParameter<std::string>("XMLFileNameBeg"))
+  xmlFileNameBeg (iConfig.getParameter<std::string>("xmlFileNameBeg"))
 {
   //now do what ever initialization is needed
   dirOutPutPlotsname+="/";
@@ -934,9 +934,11 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
 	    << std::endl;
   if(doHwSetFromDb) 
     {
-      std::cout << "\n\n++ at end of analyze - doing db query + xml stuff "<<  std::endl;  
+      std::cout << "\n\n++ at end of analyze - doing db query stuff "<<  std::endl;  
       readHwSettingsFromDb();
+      std::cout << "\n\n++ at end of analyze - doing xml stuff "<<  std::endl;  
       makeXmlFiles();
+      std::cout << "\n\n++ at end of analyze - xml and db stuff ... done"<<  std::endl;  
     }
 
 
@@ -1654,13 +1656,15 @@ void AdjustEcalTimingFromLaser::GetCCUIdandTimeshiftTProfileHist(TProfile2D* myp
   int feShiftsCounterEB(0);
   int feShiftsCounterEE(0);
 
+  std::string  theCommand   = std::string("mkdir ")+dirOutPutPlotsname+std::string("txt/"); 
+  system(theCommand.c_str());
+    
   if (doDebugMessages) std::cout << "GF just BEFORE LOOP iz: " << iz << " name: " << myprof->GetName() << " bins nxbins: " << nxbins << "\t" << nybins <<  std::endl;
-
 
   if (iz == 0)   // THIS IS EB
     {
       std::ofstream CCUIdeb;
-      CCUIdeb.open(  (std::string("CCUId_In_EB_And_TimeShift-") + std::string(myprof->GetName() ) + std::string(".txt") ).c_str()   );
+      CCUIdeb.open( ( dirOutPutPlotsname+std::string("txt/") + std::string("CCUId_In_EB_And_TimeShift-") + std::string(myprof->GetName() ) + std::string(".txt") ).c_str()   );
       
       for( int nx = 1; nx < nxbins+1; nx++)   // iphi bin
 	{
@@ -1736,7 +1740,7 @@ void AdjustEcalTimingFromLaser::GetCCUIdandTimeshiftTProfileHist(TProfile2D* myp
     {
       
       std::ofstream CCUIdee;
-      CCUIdee.open(  (std::string("CCUId_In_EE_And_TimeShift-") + std::string(myprof->GetName() ) + std::string(".txt") ).c_str()   );
+      CCUIdee.open( ( dirOutPutPlotsname+std::string("txt/") + std::string("CCUId_In_EB_And_TimeShift-") + std::string(myprof->GetName() ) + std::string(".txt") ).c_str()   );
       
       for( int ny =1; ny < nybins+1; ny++)
 	{
@@ -2445,7 +2449,8 @@ void AdjustEcalTimingFromLaser::readHwSettingsFromDb()
     
     // for SIC, run was only one and determined by DQM file; in this case, chose runA
     //RunIOV iov = econn->fetchRunIOV("P5_Co", runNum);
-    RunIOV iov = econn->fetchRunIOV("P5_Co", RunB4TS);
+    RunIOV iov = econn->fetchRunIOV("P5_Co", 163291);
+    //RunIOV iov = econn->fetchRunIOV("P5_Co", RunB4TS);
     
     std::list<ODDelaysDat> delays = econn->fetchFEDelaysForRun(&iov);
     std::list<ODDelaysDat>::const_iterator i = delays.begin();
@@ -2480,7 +2485,9 @@ void AdjustEcalTimingFromLaser::readHwSettingsFromDb()
 	    if(feDelaysFromDBEE[ism-1][ccuId-1] != -999999)
 	      std::cout << "warning: duplicate entry in DB found for fed: " << idcc+600
 			<< " CCU: " << ccuId << "; replacing old entry with this one." << std::endl;
+
 	    feDelaysFromDBEE[ism-1][ccuId-1] = i->getTimeOffset();
+	    //std::cout << "GF debug EE: ism: " << ism << " ccuId: " << ccuId << " delay: " << i->getTimeOffset() << std::endl;
 	  }
 	
 	i++;
@@ -2503,7 +2510,13 @@ void AdjustEcalTimingFromLaser::readHwSettingsFromDb()
 
 void AdjustEcalTimingFromLaser::makeXmlFiles()
 {
+
   std::cout << "making xml files" << std::endl;;
+  if(operateInDumpMode) std::cout << "note: you're operating in operateInDumpMode" << std::endl;
+  else                  std::cout << "note: you're going to apply time shifts to the xml's (NOT operateInDumpMode)" << std::endl;
+
+  std::string  theCommand   = std::string("mkdir ")+dirOutPutPlotsname+std::string("xml/"); 
+  system(theCommand.c_str());
 
   // from SIC
   // now we should have the filled DB array
@@ -2557,7 +2570,7 @@ void AdjustEcalTimingFromLaser::makeXmlFiles()
 
     // XMLs
     ofstream xml_outfile;
-    string xmlFileName = xmlFileNameBeg;
+    string xmlFileName = dirOutPutPlotsname+std::string("xml/")+ xmlFileNameBeg;
     xmlFileName+=ConvertIntToString(609+ism);
     xmlFileName+=".xml";
     xml_outfile.open(xmlFileName.c_str(),ios::out);
@@ -2607,7 +2620,7 @@ void AdjustEcalTimingFromLaser::makeXmlFiles()
 
     // XMLs
     ofstream xml_outfile;
-    string xmlFileName = xmlFileNameBeg;
+    string   xmlFileName = dirOutPutPlotsname+std::string("xml/")+ xmlFileNameBeg;
     xmlFileName+=ConvertIntToString(600+iDCC);
     xmlFileName+=".xml";
     xml_outfile.open(xmlFileName.c_str(),ios::out);
