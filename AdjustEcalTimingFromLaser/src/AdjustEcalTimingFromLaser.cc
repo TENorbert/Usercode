@@ -13,7 +13,7 @@
 //
 // Original Author:  Tambe_Ebai_Norber_+_Giovanni_(UMN) 
 //         Created:  Fri Mar  9 14:33:49 CET 2012
-// $Id: AdjustEcalTimingFromLaser.cc,v 1.20 2012/03/21 17:39:47 franzoni Exp $
+// $Id: AdjustEcalTimingFromLaser.cc,v 1.21 2012/03/21 17:48:24 franzoni Exp $
 //
 //
 
@@ -133,7 +133,7 @@ private:
   std::string dirOutPutPlotsname ;
   std::string fileOutPutName ;
   bool        subtractAverageDifferences;
-  bool        doDebugMessages;
+  //  bool        doDebugMessages;
   float binlow, binhigh;
   float lbin, hbin;
   float maxTimeDifferenceUsedForAverage;
@@ -301,6 +301,7 @@ private:
   bool doHwSetFromDb;
   bool operateInDumpMode;
   std::string xmlFileNameBeg;
+  bool doDebugMessages;
 
 };
 
@@ -835,7 +836,7 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
   SaveCanvasInDir(ccutshiftEB);
   // Project 1D here!
   EBccu1dprojection = make1dProjection(ccutshiftEB);
-  Savehist(EBccu1dprojection);
+  //  Savehist(EBccu1dprojection);
   
   
   //EEP
@@ -853,7 +854,7 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
 
   // Project 1D here!
   EEPccu1dprojection = make1dProjection(ccutshiftEEP);
-  Savehist(EEPccu1dprojection);
+  //  Savehist(EEPccu1dprojection);
 
   
   //EEM 
@@ -870,11 +871,14 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
 
   // Project 1D here!
   EEMccu1dprojection = make1dProjection(ccutshiftEEM);
-  Savehist(EEMccu1dprojection);
+  //  Savehist(EEMccu1dprojection);
 
   
   // EB
-  //loop over all FED TProfile2D: make differences RunA-RunB, make 1d projections and fill arrays which will be necessary for xmls' 
+  //loop over all FED TProfile2D: make differences RunA-RunB, make 1d projections and fill arrays which will be necessary for xmls'
+  // Reset Previously made 1D
+   EBccu1dprojection->Reset();
+
   for( int nh = 0; nh < numEBFed; nh++)
     {
       CCUTimeShiftEB[nh]= SubtractTwoTProfile2D(CCUAvgTimeEB_RunA[nh], CCUAvgTimeEB_RunB[nh], subtractAverageDifferences, true);
@@ -885,12 +889,21 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
       GetCCUIdandTimeshiftTProfileHist(CCUTimeShiftEB[nh], 0);
       
       EBCCU1dprojection[nh]= make1dProjection(CCUTimeShiftEB[nh]);      // Real 1D Projection here!
+
+      EBccu1dprojection->Add(EBCCU1dprojection[nh]);	  // Add all individual SM 1D to get EB All.	  
       SaveCanvasInDir(CCUTimeShiftEB[nh]);
       Savehist(EBCCU1dprojection[nh]);
     }
   
+    Savehist(EBccu1dprojection); // save new add hist here!  
   //EE
-  //loop over all FED TProfile2D: make differences RunA-RunB, make 1d projections and fill arrays which will be necessary for xmls' 
+  //loop over all FED TProfile2D: make differences RunA-RunB, make 1d projections and fill arrays which will be necessary for xmls'
+	 
+  //EE
+  //Reset Prviously made 1D
+  EEPccu1dprojection->Reset();
+  EEMccu1dprojection->Reset();
+ 
   for ( int eenh = 0; eenh < numSC; eenh++)
     {
       ///////////////////EE plus
@@ -902,7 +915,8 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
       GetCCUIdandTimeshiftTProfileHist(CCUTimeShiftEEP[eenh], 1);
       if (doDebugMessages) std::cout << "GF just AFTER calling EEP GetCCUIdandTimeshiftTProfileHist to operate over: " << CCUTimeShiftEEP[eenh]->GetName() << std::endl;            
       EEPCCU1dprojection[eenh]= make1dProjection(CCUTimeShiftEEP[eenh]); // Real 1D Projection here!
-
+	  
+	  EEPccu1dprojection->Add(EEPCCU1dprojection[eenh]);	  // Add all individual SM 1D to get EB All.
       SaveCanvasInDir(CCUTimeShiftEEP[eenh]);
       Savehist(EEPCCU1dprojection[eenh]);
 
@@ -918,10 +932,17 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
       if (doDebugMessages) std::cout << "GF just AFTER calling EEM GetCCUIdandTimeshiftTProfileHist to operate over: " << CCUTimeShiftEEM[eenh]->GetName() << std::endl;
 
       EEMCCU1dprojection[eenh]= make1dProjection(CCUTimeShiftEEM[eenh]); // Real 1D Projection here!
+	  
+	  EEMccu1dprojection->Add(EEMCCU1dprojection[eenh]);	  // Add all individual SM 1D to get EB All.
+	  
       SaveCanvasInDir(CCUTimeShiftEEM[eenh]);
       Savehist(EEMCCU1dprojection[eenh]);
 
     }
+   // save new 1D added SM to give EEP/EEM here!
+  Savehist(EEPccu1dprojection);
+  Savehist(EEMccu1dprojection);
+ 
 
   savefile = new TFile(fileOutPutName.c_str(), "recreate");
   std::cout << "About to save histos to fole: is it accessible&open (0/1)? " <<  savefile->IsOpen() << std::endl;
@@ -970,7 +991,7 @@ AdjustEcalTimingFromLaser::beginJob()
       //  ccuname += " CCU_";
       //  ccuname += ConvertIntToString(jj);
       ccuname += "_RunA_";
-      ccuInFedEBtimeRunA[ii] = new TH1F(ccuname.c_str(), ccuname.c_str(), 100, binlow, binhigh);
+      ccuInFedEBtimeRunA[ii] = new TH1F(ccuname.c_str(), ccuname.c_str(), 1000000, binlow, binhigh);
       //}
     }
   
@@ -989,7 +1010,7 @@ AdjustEcalTimingFromLaser::beginJob()
       ccuname += "_RunB_";
       //  ccuInFedEBtimeRunB[ii][jj] = new TH1F(ccuname.c_str(), ccuname.c_str(), 200, -100.0, 100.0);
       //}
-      ccuInFedEBtimeRunB[ii] = new TH1F(ccuname.c_str(), ccuname.c_str(), 100, binlow, binhigh);
+      ccuInFedEBtimeRunB[ii] = new TH1F(ccuname.c_str(), ccuname.c_str(), 1000000, binlow, binhigh);
       
     }
   
@@ -1004,15 +1025,15 @@ AdjustEcalTimingFromLaser::beginJob()
 	  ccuname += " Fed ";
       ccuname += ConvertIntToString(ii + 610);
 
-      ccuInFedEBtimeshift[ii] = new TH1F(ccuname.c_str(), ccuname.c_str(), 100, -25.0, 25.0);
+      ccuInFedEBtimeshift[ii] = new TH1F(ccuname.c_str(), ccuname.c_str(), 1000000, -25.0, 25.0);
       //}
     }
   
 
   ///// Define  Corresponding 1D dist for all Feds in EB Here! run A
-  ebccutimedistrunA = new TH1F("ebccutimedistrunA","1d EB CCU Mean Time [ns] Dist RunA", 100, binlow, binhigh);
-  ebccutimedistrunB = new TH1F("ebccutimedistrunB","1d EB CCU Mean Time [ns] Dist RunB", 100, binlow, binhigh);
-  ebccutimedistshift = new TH1F("ebccutimedistshift","1d EB CCU Mean Time Shift[ns] Dist",100, lbin, hbin);
+  ebccutimedistrunA = new TH1F("ebccutimedistrunA","1d EB CCU Mean Time [ns] Dist RunA", 1000000, binlow, binhigh);
+  ebccutimedistrunB = new TH1F("ebccutimedistrunB","1d EB CCU Mean Time [ns] Dist RunB", 1000000, binlow, binhigh);
+  ebccutimedistshift = new TH1F("ebccutimedistshift","1d EB CCU Mean Time Shift[ns] Dist",1000000, lbin, hbin);
 
 
 
@@ -1024,25 +1045,25 @@ AdjustEcalTimingFromLaser::beginJob()
       std::string eemscname = "CCU Time Dist[ns] Fed ";
       eemscname  += ConvertIntToString(sc + 601);
       eemscname  +="RunA";
-      ccuInFedEEMtimeRunA[sc] = new TH1F(eemscname.c_str(),eemscname.c_str(), 100, binlow, binhigh);
+      ccuInFedEEMtimeRunA[sc] = new TH1F(eemscname.c_str(),eemscname.c_str(), 1000000, binlow, binhigh);
 
       // EEP
       std::string eepscname ="CCU Time Dist[ns] Fed ";
       eepscname  += ConvertIntToString(sc + 646);
       eepscname  +="RunA";
-      ccuInFedEEPtimeRunA[sc] = new TH1F(eepscname.c_str(),eepscname.c_str(), 100, binlow, binhigh);
+      ccuInFedEEPtimeRunA[sc] = new TH1F(eepscname.c_str(),eepscname.c_str(), 1000000, binlow, binhigh);
        
     }
 
   ///// Define  Corresponding 1D dist for all Feds in EEP and EEM Here! run A
   // EEP
-  eepccutimedistrunA = new TH1F("eepccutimedistrunA","1d EE+ CCU Mean Time [ns] Dist RunA", 100, binlow, binhigh);
-  eepccutimedistrunB = new TH1F("eepccutimedistrunB","1d EE+ CCU Mean Time [ns] Dist RunB", 100, binlow, binhigh);
-  eepccutimedistshift = new TH1F("eepccutimedistshift","1d EE+ CCU Mean Time Shift [ns] Dist ", 100, binlow, binhigh);
+  eepccutimedistrunA = new TH1F("eepccutimedistrunA","1d EE+ CCU Mean Time [ns] Dist RunA", 1000000, binlow, binhigh);
+  eepccutimedistrunB = new TH1F("eepccutimedistrunB","1d EE+ CCU Mean Time [ns] Dist RunB", 1000000, binlow, binhigh);
+  eepccutimedistshift = new TH1F("eepccutimedistshift","1d EE+ CCU Mean Time Shift [ns] Dist ", 1000000, binlow, binhigh);
   // EEM
-  eemccutimedistrunA = new TH1F("eemccutimedistrunA","1d EE- CCU Mean Time [ns] Dist RunA", 100, binlow, binhigh);
-  eemccutimedistrunB = new TH1F("eemccutimedistrunB","1d EE- CCU Mean Time [ns] Dist RunB", 100, binlow, binhigh);
-  eemccutimedistshift = new TH1F("eemccutimedistshift","1d EE- CCU Mean Time Shift [ns] Dist ", 100, binlow, binhigh);
+  eemccutimedistrunA = new TH1F("eemccutimedistrunA","1d EE- CCU Mean Time [ns] Dist RunA", 1000000, binlow, binhigh);
+  eemccutimedistrunB = new TH1F("eemccutimedistrunB","1d EE- CCU Mean Time [ns] Dist RunB", 1000000, binlow, binhigh);
+  eemccutimedistshift = new TH1F("eemccutimedistshift","1d EE- CCU Mean Time Shift [ns] Dist ", 1000000, binlow, binhigh);
  
 
  
@@ -1053,13 +1074,13 @@ AdjustEcalTimingFromLaser::beginJob()
       std::string eemscname = "CCU Time Dist[ns]EE- Fed ";
       eemscname  += ConvertIntToString(sc + 601);
       eemscname  +="RunB";
-      ccuInFedEEMtimeRunB[sc] = new TH1F(eemscname.c_str(),eemscname.c_str(), 100, binlow, binhigh);
+      ccuInFedEEMtimeRunB[sc] = new TH1F(eemscname.c_str(),eemscname.c_str(), 1000000, binlow, binhigh);
 
       // EEP
       std::string eepscname ="CCU Time Dist[ns]EE+ Fed ";
       eepscname  += ConvertIntToString(sc + 646);
       eepscname  +="RunB";
-      ccuInFedEEPtimeRunB[sc] = new TH1F(eepscname.c_str(),eepscname.c_str(), 100, binlow, binhigh);
+      ccuInFedEEPtimeRunB[sc] = new TH1F(eepscname.c_str(),eepscname.c_str(), 1000000, binlow, binhigh);
  
     }
 
@@ -1071,14 +1092,14 @@ AdjustEcalTimingFromLaser::beginJob()
       eemscname  += ConvertIntToString( Numbers::iEE(sc+1));
       eemscname  +="_Fed";
       eemscname  += ConvertIntToString(sc + 601);
-      ccuInFedEEMtimeshift[sc] = new TH1F(eemscname.c_str(),eemscname.c_str(), 100, binlow, binhigh);
+      ccuInFedEEMtimeshift[sc] = new TH1F(eemscname.c_str(),eemscname.c_str(), 1000000, binlow, binhigh);
        
       // EEP
       std::string eepscname ="CCU Time Shift Dist[ns]EE";
       eepscname  += ConvertIntToString( Numbers::iEE(sc+10));
       eepscname  +="_Fed ";
       eepscname  += ConvertIntToString(sc + 646);
-      ccuInFedEEPtimeshift[sc] = new TH1F(eepscname.c_str(),eepscname.c_str(), 100, binlow, binhigh);
+      ccuInFedEEPtimeshift[sc] = new TH1F(eepscname.c_str(),eepscname.c_str(), 1000000, binlow, binhigh);
        
     }
 
@@ -1212,41 +1233,41 @@ AdjustEcalTimingFromLaser::beginJob()
   
   
   // Xatl time Vs Amplitude EB and EE
-  XtaltimeVsAmpEB = new TH2F("XtaltimeVsAmpEB", "Crystal In EB Time Vs Amplitude",  100, 0, 4000,100, binlow, binhigh );
-  XtaltimeVsAmpEE = new TH2F("XtaltimeVsAmpEE", "Crystal In EE Time Vs Amplitude",  100, 0, 4000,100, binlow, binhigh );
+  XtaltimeVsAmpEB = new TH2F("XtaltimeVsAmpEB", "Crystal In EB Time Vs Amplitude",  100, 0, 4000,1000000, binlow, binhigh );
+  XtaltimeVsAmpEE = new TH2F("XtaltimeVsAmpEE", "Crystal In EE Time Vs Amplitude",  100, 0, 4000,1000000, binlow, binhigh );
   //  Time of 1d
-  xtaltimeDistEB = new TH1F("xtaltimeEB","1d Crystal Time Distrubution",100, binlow, binhigh);
-  xtaltimeDistEE = new TH1F("xtaltimeEE","1d Crystal Time Distrubution",100, binlow, binhigh);
+  xtaltimeDistEB = new TH1F("xtaltimeEB","1d Crystal Time Distrubution",1000000, binlow, binhigh);
+  xtaltimeDistEE = new TH1F("xtaltimeEE","1d Crystal Time Distrubution",1000000, binlow, binhigh);
   
   // Xtal time Vs FedId
-  XtaltimeVsFedIDEB = new TH2F("XtaltimeVsFedIDEB", "Crystal Time[ns] Vs FedId In EB only", 54, 601, 655, 100, binlow, binhigh );
-  XtaltimeVsFedIDEE = new TH2F("XtaltimeVsFedIDEE","Crystal Time[ns] Vs FedId In EE Only",  54,  601,  655, 100, binlow, binhigh); 
+  XtaltimeVsFedIDEB = new TH2F("XtaltimeVsFedIDEB", "Crystal Time[ns] Vs FedId In EB only", 54, 601, 655, 1000000, binlow, binhigh );
+  XtaltimeVsFedIDEE = new TH2F("XtaltimeVsFedIDEE","Crystal Time[ns] Vs FedId In EE Only",  54,  601,  655, 1000000, binlow, binhigh); 
   //Xtal Time Vs Lumi
-  XtaltimeVsLumiEB = new TH2F("XtaltimeVsLumiEB", "Crystal  In EB Time  Vs Lumi", 100, 0, 4000,100, binlow, binhigh );
+  XtaltimeVsLumiEB = new TH2F("XtaltimeVsLumiEB", "Crystal  In EB Time  Vs Lumi", 100, 0, 4000,1000000, binlow, binhigh );
   // xtak Time Vs Eta EB   
-  XtaltimeVsEta = new TH2F("XtaltimeVsEta", "Crystal In EB Time Vs Eta", 10, -3, 3,100, binlow, binhigh );
+  XtaltimeVsEta = new TH2F("XtaltimeVsEta", "Crystal In EB Time Vs Eta", 10, -3, 3,1000000, binlow, binhigh );
   //xtal Time Vs Run Number
-  XtaltimeVsRun = new TH2F("XtaltimeVsRun", "Crystal  In EB Time  Vs Run Number", 100, 150000, 190000, 100, binlow, binhigh);
+  XtaltimeVsRun = new TH2F("XtaltimeVsRun", "Crystal  In EB Time  Vs Run Number", 100, 150000, 190000, 1000000, binlow, binhigh);
   EBP1Dtime =  new TH1F("EBP1Dtime","1d EB-1 Timing [ns]", 100, binlow, binhigh);
   EBM1Dtime =  new TH1F("EBM1Dtime","1d EB+1 Timing [ns]", 100, binlow, binhigh);
   // Run Bs
   // Xatl time Vs Amplitude EB and EE
-  XtaltimeVsAmpEB_RunB = new TH2F("XtaltimeVsAmpEB_RunB", "Crystal In EB Time Vs Amplitude",  100, 0, 4000,100, binlow, binhigh );
-  XtaltimeVsAmpEE_RunB = new TH2F("XtaltimeVsAmpEE_RunB", "Crystal In EE Time Vs Amplitude",  100, 0, 4000,100, binlow, binhigh );
+  XtaltimeVsAmpEB_RunB = new TH2F("XtaltimeVsAmpEB_RunB", "Crystal In EB Time Vs Amplitude",  100, 0, 4000,1000000, binlow, binhigh );
+  XtaltimeVsAmpEE_RunB = new TH2F("XtaltimeVsAmpEE_RunB", "Crystal In EE Time Vs Amplitude",  100, 0, 4000,1000000, binlow, binhigh );
   //  Time of 1d
-  xtaltimeDistEB_RunB = new TH1F("xtaltimeEB_RunB","Crystal Time Distrubution",100, binlow, binhigh);
-  xtaltimeDistEE_RunB = new TH1F("xtaltimeEE_RunB","Crystal Time Distrubution",100, binlow, binhigh);
+  xtaltimeDistEB_RunB = new TH1F("xtaltimeEB_RunB","Crystal Time Distrubution",1000000, binlow, binhigh);
+  xtaltimeDistEE_RunB = new TH1F("xtaltimeEE_RunB","Crystal Time Distrubution",1000000, binlow, binhigh);
   // Xtal time Vs FedId
-  XtaltimeVsFedIDEB_RunB = new TH2F("XtaltimeVsFedIDEB_RunB", "Crystal Time[ns] Vs FedId In EB only", 54, 601, 655, 100, binlow, binhigh );
-  XtaltimeVsFedIDEE_RunB = new TH2F("XtaltimeVsFedIDEE_RunB","Crystal Time[ns] Vs FedId In EE Only",  54,  601,  655, 100, binlow, binhigh); 
+  XtaltimeVsFedIDEB_RunB = new TH2F("XtaltimeVsFedIDEB_RunB", "Crystal Time[ns] Vs FedId In EB only", 54, 601, 655, 1000000, binlow, binhigh );
+  XtaltimeVsFedIDEE_RunB = new TH2F("XtaltimeVsFedIDEE_RunB","Crystal Time[ns] Vs FedId In EE Only",  54,  601,  655, 1000000, binlow, binhigh); 
   //Xtal Time Vs Lumi
-  XtaltimeVsLumiEB_RunB = new TH2F("XtaltimeVsLumiEB_RunB", "Crystal  In EB Time  Vs Lumi", 100, 0, 4000,100, binlow, binhigh );
+  XtaltimeVsLumiEB_RunB = new TH2F("XtaltimeVsLumiEB_RunB", "Crystal  In EB Time  Vs Lumi", 100, 0, 4000,1000000, binlow, binhigh );
   // xtak Time Vs Eta EB   
-  XtaltimeVsEta_RunB = new TH2F("XtaltimeVsEta_RunB", "Crystal  In EB Time  Vs Eta", 10, -3, 3,100, binlow, binhigh );
+  XtaltimeVsEta_RunB = new TH2F("XtaltimeVsEta_RunB", "Crystal  In EB Time  Vs Eta", 10, -3, 3,1000000, binlow, binhigh );
   //xtal Time Vs Run Number
-  XtaltimeVsRun_RunB = new TH2F("XtaltimeVsRun_RunB", "Crystal  In EB Time  Vs Run Number", 100, 150000, 190000, 100, binlow, binhigh);
-  EBP1Dtime_RunB =  new TH1F("EBP1Dtime_RunB","EB-1 Timing [ns]", 100, binlow, binhigh);
-  EBM1Dtime_RunB =  new TH1F("EBM1Dtime_RunB","EB+1 Timing [ns]", 100, binlow, binhigh);
+  XtaltimeVsRun_RunB = new TH2F("XtaltimeVsRun_RunB", "Crystal  In EB Time  Vs Run Number", 100, 150000, 190000, 1000000, binlow, binhigh);
+  EBP1Dtime_RunB =  new TH1F("EBP1Dtime_RunB","EB-1 Timing [ns]", 1000000, binlow, binhigh);
+  EBM1Dtime_RunB =  new TH1F("EBM1Dtime_RunB","EB+1 Timing [ns]", 1000000, binlow, binhigh);
 
 
 
@@ -1514,8 +1535,8 @@ AdjustEcalTimingFromLaser::SubtractTwoTProfile2D( TProfile2D* hprof_runA, TProfi
 	    // if time difference bigger than reasonable limit -> suspect 'bad measurement' => excluded it from the average
 	    if( fabs(timeA-timeB)> maxTimeDifferenceUsedForAverage )  continue;
 	    // you need to have two valid averages to consider a CCU for the average difference
-	    if (nentriesA==0 || nentriesB==0)                         continue;
-
+	    // you need to have two valid averages to consider a CCU for the average difference
+	    if ((nentriesA==0 || nentriesB==0)|| fabs(timeA)> 20 || fabs(timeB)> 20) continue; // skip also CCUs with realy large time.
 	    if(isEb)
 	      {
 		// in the EB case, discriminate I and L, and incremet mean accordingly
@@ -1569,9 +1590,11 @@ AdjustEcalTimingFromLaser::SubtractTwoTProfile2D( TProfile2D* hprof_runA, TProfi
 
 	  // if there's data for neither of two runs => likely a permanently dead region or a non-existsing EE area
 	  // set the  difference to -1000
-	  if(nentriesA==0 && nentriesB==0)
-	    {
-	      timeshift = timeValueNoData; }
+	  
+	  // you need to have two valid averages to consider a CCU for the average difference
+	  if ((nentriesA==0 || nentriesB==0)|| fabs(timeA)> 20 || fabs(timeB)> 20) // Skip CCUs with really large time shift
+	  {
+		timeshift = timeValueNoData; }
 	  // handle/skip CCU without reading  at either runs
 	  else if((timeA == 0 && timeB !=0) || (timeA != 0 && timeB ==0)) 
 	    { // if there's data for only of the two runs, set the value of the difference to -110
@@ -1603,7 +1626,6 @@ AdjustEcalTimingFromLaser::SubtractTwoTProfile2D( TProfile2D* hprof_runA, TProfi
   return result_hprof;
   
 } // end of  Trial Subtract
-
 
 
 
@@ -2709,7 +2731,7 @@ TH1F* AdjustEcalTimingFromLaser::make1dProjection(TProfile2D* hprof)
 
   int Nentry = 0;
   
-  TH1F* tproject = new TH1F( (std::string("projection ") + std::string(hprof->GetTitle()) ).c_str()  ,  (std::string("1d ") + std::string(hprof->GetTitle()) ).c_str()  ,20,-5.0, 5.0);
+  TH1F* tproject = new TH1F( (std::string("projection ") + std::string(hprof->GetTitle()) ).c_str()  ,  (std::string("1d ") + std::string(hprof->GetTitle()) ).c_str()  ,10000,-5.0, 5.0);
 
   tproject->Reset();
   for( int ix =1; ix <= NXentries; ix++)
