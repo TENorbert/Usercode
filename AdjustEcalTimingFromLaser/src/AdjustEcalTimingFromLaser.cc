@@ -13,7 +13,7 @@
 //
 // Original Author:  Tambe_Ebai_Norber_+_Giovanni_(UMN) 
 //         Created:  Fri Mar  9 14:33:49 CET 2012
-// $Id: AdjustEcalTimingFromLaser.cc,v 1.22 2012/03/28 16:34:00 tambe Exp $
+// $Id: AdjustEcalTimingFromLaser.cc,v 1.23 2012/03/30 18:05:21 tambe Exp $
 //
 //
 
@@ -66,6 +66,8 @@
 
 #define bx2nanosecond   25.
 #define nominalTimeInBx 5.
+#define RiseTimeValueInBx 3.50 // Just use this from now! Inspiration from Elog Plots on Rise time!
+//#define TimeWithMatacqInBx 1.    // Just use 1 for now!
 #define nsToHwCount     24./25.
 
 const int numEBFed       = 36;
@@ -113,6 +115,7 @@ private:
   TProfile2D* SubtractTwoTProfile2D( TProfile2D* hprof_runA, TProfile2D* hprof_runB, bool removeSectorAverate, bool isEb);
   void GetCCUIdandTimeshiftTProfileHist(TProfile2D* myprof,  int iz);
   void SaveCanvasInDir( TProfile2D* mytprof);
+  void SaveEB_EECanvasInDir( TProfile2D* mytprof);
   void writehist();
   void moveBinsTProfile2D(TProfile2D* myprof);
   void Savehist(TH1F* myhist);
@@ -132,6 +135,7 @@ private:
   std::string dirOutPutPlotsname ;
   std::string fileOutPutName ;
   bool        subtractAverageDifferences;
+  bool        IsTmaxAPD;  
   // bool        doDebugMessages;
   float binlow, binhigh;
   float lbin, hbin;
@@ -301,7 +305,6 @@ private:
   bool operateInDumpMode;
   std::string xmlFileNameBeg;
   bool doDebugMessages;
-
 };
 
 
@@ -313,6 +316,7 @@ AdjustEcalTimingFromLaser::AdjustEcalTimingFromLaser(const edm::ParameterSet& iC
   fileOutPutName ( iConfig.getParameter<std::string>("fileOutPutName") ) ,
   doDebugMessages ( iConfig.getParameter<bool>("doDebugMessages") ) ,
   subtractAverageDifferences  ( iConfig.getParameter<bool>("subtractAverageDifferences") ) ,
+  IsTmaxAPD ( iConfig.getParameter<bool>("IsTmaxAPD") ) ,
   maxTimeDifferenceUsedForAverage  ( iConfig.getParameter<double>("maxTimeDifferenceUsedForAverage") ) ,
   minTimeChangeToApply  ( iConfig.getParameter<double>("minTimeChangeToApply") ) ,
   doHwSetFromDb ( iConfig.getParameter<bool>("doHwSetFromDb") ) ,
@@ -381,7 +385,7 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
   
   EBDetId ebdetid;
   EEDetId eedetid;
-  
+
 
   // initialized ccu arrays:
 
@@ -460,8 +464,15 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
 	      //		int ieta = x.ix;
 	      //		int iphi = x.iy+10;
 
-	      float crytime = x.tmax[0];
-	      float Xtaltime = (crytime - nominalTimeInBx)*bx2nanosecond;
+	      float Xtaltime = 0;
+	      float T_max_APD = (x.tmax[0] - nominalTimeInBx)*bx2nanosecond;
+		  //		  float TmaxMTmatacq  = ( x.dtdc[0] - TimeWithMatacqInBx)* bx2nanosecond;
+		  float T_rise   = ( x.l_rise_time[0] - RiseTimeValueInBx)*bx2nanosecond;
+
+		  if(IsTmaxAPD)
+			{ Xtaltime = T_max_APD ;
+			}else{ Xtaltime = T_rise; } // Reads either T_max_APD or T_Rise ; still have to automate T_Matacq subtracted here!
+		  
 	      int   EBXtalFed = x.fed;
 	      int   numfed = EBXtalFed - 610;
 	      
@@ -472,7 +483,7 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
 	      int IdCCU = eid.towerId();
 	      int ccuid =IdCCU;
 
-	      CCUInFedTimesEB_runA[numfed][ccuid-1] += (x.tmax[0]-5)*25;
+	      CCUInFedTimesEB_runA[numfed][ccuid-1] += Xtaltime;
 	      CCUInFedNumEntriesEB_runA[numfed][ccuid-1] ++;   // Not really used! Just for check!
 
 
@@ -491,15 +502,15 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
 	      CCUAvgTimeEB_RunA[numfed]->Fill(iphi, ieta, Xtaltime); // Fill all EB-FEDs 
 	      
 	      XtaltimeVsAmpEB->Fill(x.qmax[0],Xtaltime); // Here still has raw time. hmm!
-	      //    XtaltimeVsTimeEB->Fill( x.time[0],x.tmax[0]);
-	      XtaltimeVsLumiEB->Fill(x.lumi[0],x.tmax[0]);
-	      XtaltimeVsFedIDEB->Fill(x.fed,(x.tmax[0]-nominalTimeInBx)*bx2nanosecond);
+	      //    XtaltimeVsTimeEB->Fill( x.time[0],Xtaltime);
+	      XtaltimeVsLumiEB->Fill(x.lumi[0],Xtaltime);
+	      XtaltimeVsFedIDEB->Fill(x.fed,Xtaltime);
 	      
-	      xtaltimeDistEB->Fill( (x.tmax[0]-nominalTimeInBx)*bx2nanosecond);
-	      //FedAvgTimingEB->Fill(x.iy+10,x.ix,(x.tmax[0]-nominalTimeInBx)*bx2nanosecond);  // Add 10 to iphi to match Laser ppl style!
-	      //ccutimeEBrunA->Fill(x.iy+10,x.ix,(x.tmax[0]-nominalTimeInBx)*bx2nanosecond);  // ccutime 5by5 bining!
-	      FedAvgTimingEB->Fill(iphi,ieta,(x.tmax[0]-5)*25);  //  ALL EB
-	      ccutimeEBrunA->Fill(iphi,ieta,(x.tmax[0]-5)*25);   // ccutime 5by5 bining!
+	      xtaltimeDistEB->Fill( Xtaltime);
+	      //FedAvgTimingEB->Fill(x.iy+10,x.ix,Xtaltime);  // Add 10 to iphi to match Laser ppl style!
+	      //ccutimeEBrunA->Fill(x.iy+10,x.ix,Xtaltime);  // ccutime 5by5 bining!
+	      FedAvgTimingEB->Fill(iphi,ieta,Xtaltime);  //  ALL EB
+	      ccutimeEBrunA->Fill(iphi,ieta,Xtaltime);   // ccutime 5by5 bining!
 
 	    }
 	  
@@ -512,49 +523,59 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
 	    
 	    EEDetId eedetid(x.detId);
 	    int ix = eedetid.ix();
-	    int iy = eedetid.iy(); 
+	    int iy = eedetid.iy();
+		float Xtaltime = 0;
+		float T_max_APD = (x.tmax[0]-nominalTimeInBx)*bx2nanosecond;
+		//		float TmaxMTmatacq  = ( x.dtdc[0] - TimeWithMatacqInBx)* bx2nanosecond;
+		float T_rise   = ( x.l_rise_time[0] - RiseTimeValueInBx)*bx2nanosecond;
+		
+		if(IsTmaxAPD)
+		  { Xtaltime = T_max_APD;
+		  }else{ Xtaltime = T_rise; } // Reads either T_max_APD or T_Rise ; still have to automate T_Matacq subtracted here!
+
+		
 	    int EExtalfed = x.fed;
 	    //   Do EE  here!
 	    const EcalElectronicsId eid = x.elecId;
 	    int SCId = eid.towerId(); // SC Id
 
 	    // Loop over number crystals in EE
-	    xtaltimeDistEE->Fill( (x.tmax[0]-nominalTimeInBx)*bx2nanosecond);
-	    XtaltimeVsAmpEE->Fill(x.qmax[0],(x.tmax[0]-nominalTimeInBx)*bx2nanosecond);
-	    // XtaltimeVsTimeEE->Fill( x.time[0],(x.tmax[0]-nominalTimeInBx)*bx2nanosecond);
-	    XtaltimeVsFedIDEE->Fill(x.fed,(x.tmax[0]-nominalTimeInBx)*bx2nanosecond);
+	    xtaltimeDistEE->Fill(Xtaltime);
+	    XtaltimeVsAmpEE->Fill(x.qmax[0],Xtaltime);
+	    // XtaltimeVsTimeEE->Fill( x.time[0],Xtaltime);
+	    XtaltimeVsFedIDEE->Fill(x.fed,Xtaltime);
 	    
 	    if(x.fed >=601 && x.fed <= 609)
 	      {
 		// For EE Minus
 		int eehistprofm = EExtalfed - 601;
-		float crytime = (x.tmax[0]-nominalTimeInBx)*bx2nanosecond;
-		CCUAvgTimeEEM_RunA[eehistprofm]->Fill(ix, iy, crytime);
-		FedAvgTimingEEM->Fill(ix,iy,(x.tmax[0]-nominalTimeInBx)*bx2nanosecond); // Crystal in EEM check with data
-		ccutimeEEMrunA->Fill(ix,iy,(x.tmax[0]-nominalTimeInBx)*bx2nanosecond); // CCU 5by5 bining in EEM check with data
+
+		CCUAvgTimeEEM_RunA[eehistprofm]->Fill(ix,iy,Xtaltime);
+		FedAvgTimingEEM->Fill(ix,iy,Xtaltime); // Crystal in EEM check with data
+		ccutimeEEMrunA->Fill(ix,iy,Xtaltime); // CCU 5by5 bining in EEM check with data
 		// Fill Arrays for EEM
-		CCUInFedTimesEEM_runA[eehistprofm][SCId -1]  += crytime;
+		CCUInFedTimesEEM_runA[eehistprofm][SCId -1]  += Xtaltime;
 		CCUInFedNumEntriesEEM_runA[eehistprofm][SCId -1] ++;
 	      }
 	    else    { // EE PLus 
 	      //cout << "Plus EE crystals" << endl;
 	      // For EE Plus
 	      int eehistprofp = EExtalfed - 646;
-	      float crytime = (x.tmax[0]-nominalTimeInBx)*bx2nanosecond;
-	      CCUAvgTimeEEP_RunA[eehistprofp]->Fill(ix, iy, crytime);
-	      
-	      FedAvgTimingEEP->Fill(ix,iy,(x.tmax[0]-nominalTimeInBx)*bx2nanosecond);
-	      ccutimeEEPrunA->Fill(ix,iy,(x.tmax[0]-nominalTimeInBx)*bx2nanosecond); // CCU 5by5 bining in EEP check with data
+
+		  
+	      CCUAvgTimeEEP_RunA[eehistprofp]->Fill(ix, iy,Xtaltime);
+	      FedAvgTimingEEP->Fill(ix,iy,Xtaltime);
+	      ccutimeEEPrunA->Fill(ix,iy,Xtaltime); // CCU 5by5 bining in EEP check with data
 	      // Fill Array for EEP
-	      CCUInFedTimesEEP_runA[eehistprofp][SCId -1]  += crytime;
+	      CCUInFedTimesEEP_runA[eehistprofp][SCId -1]  += Xtaltime;
 	      CCUInFedNumEntriesEEP_runA[eehistprofp][SCId -1] ++;
 	    }
 
 	  } // end fill EE
 	  
 	  //Fill generally for all sturff.
-	  XtaltimeVsEta->Fill(x.eta, (x.tmax[0]-nominalTimeInBx)*bx2nanosecond);
-	  XtaltimeVsRun->Fill( x.run,(x.tmax[0]-nominalTimeInBx)*bx2nanosecond);
+	  XtaltimeVsEta->Fill(x.eta, x.tmax[0]);   // Only these guys have APD Time needs work!
+	  XtaltimeVsRun->Fill( x.run,x.tmax[0]);
 	  
 	  numcrys +=numcrys;
 	  
@@ -595,22 +616,29 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
 		int ieta = ebdetid.ieta();
 		int iphi = ebdetid.iphi();
 
-		float crytime = x.tmax[0];
-		float Xtaltime = (crytime - nominalTimeInBx)*bx2nanosecond;
+		float Xtaltime = 0;
+		float T_max_APD = (x.tmax[0] - nominalTimeInBx)*bx2nanosecond;
+		
+		//		float TmaxMTmatacq  = ( x.dtdc[0] - TimeWithMatacqInBx)* bx2nanosecond;
+		float T_rise   = ( x.l_rise_time[0] - RiseTimeValueInBx)*bx2nanosecond;
+		
+		if(IsTmaxAPD)
+		  { Xtaltime = T_max_APD;
+		  }else{ Xtaltime = T_rise; } // Reads either T_max_APD or T_Rise ; still have to automate T_Matacq subtracted here!
+
 		int  EBXtalFed = x.fed;
 		int numfed = EBXtalFed - 610;
 		
 
 		// 1D ccu timing dist stuff
-		// run A
-		
+		// run A		
 		//EBdetId  detid(x.detId);
 		
 		const EcalElectronicsId eid = x.elecId;
 		int IdCCU = eid.towerId();
 		int ccuid = IdCCU;
 
-		CCUInFedTimesEB_runB[numfed][ccuid-1] += (x.tmax[0]- 5)*25;
+		CCUInFedTimesEB_runB[numfed][ccuid-1] += Xtaltime;
 		CCUInFedNumEntriesEB_runB[numfed][ccuid-1] ++;
 
 		if(x.fed ==610)// what's special about this fed?   TO BE CHECKED // Nothing special; Just Debugging.
@@ -626,12 +654,12 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
 		CCUAvgTimeEB_RunB[numfed]->Fill(iphi, ieta, Xtaltime); // Fill all EB-FEDs
 		
 		XtaltimeVsAmpEB_RunB->Fill(x.qmax[0],Xtaltime); 
-		XtaltimeVsLumiEB_RunB->Fill(x.lumi[0],x.tmax[0]);
-		XtaltimeVsFedIDEB_RunB->Fill(x.fed,(x.tmax[0]-nominalTimeInBx)*bx2nanosecond);
+		XtaltimeVsLumiEB_RunB->Fill(x.lumi[0],Xtaltime);
+		XtaltimeVsFedIDEB_RunB->Fill(x.fed,Xtaltime);
 		
-		xtaltimeDistEB_RunB->Fill( (x.tmax[0]-nominalTimeInBx)*bx2nanosecond);
-		FedAvgTimingEB_RunB->Fill(iphi,ieta,(x.tmax[0]-nominalTimeInBx)*bx2nanosecond); //  ns time!
-		ccutimeEBrunB->Fill(iphi,ieta,(x.tmax[0]-nominalTimeInBx)*bx2nanosecond); // CCU 5by5 bining in EB Run B check with data
+		xtaltimeDistEB_RunB->Fill( Xtaltime);
+		FedAvgTimingEB_RunB->Fill(iphi,ieta,Xtaltime); //  ns time!
+		ccutimeEBrunB->Fill(iphi,ieta,Xtaltime); // CCU 5by5 bining in EB Run B check with data
 
 	      }
 	    
@@ -645,6 +673,15 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
 	      int ix = eedetid.ix();
 	      int iy = eedetid.iy();
 	      int EExtalfed = x.fed;
+		  float Xtaltime = 0;
+		  float T_max_APD = (x.tmax[0]-nominalTimeInBx)*bx2nanosecond;
+		  //		  float TmaxMTmatacq  = ( x.dtdc[0] - TimeWithMatacqInBx)* bx2nanosecond;
+		  float T_rise   = ( x.l_rise_time[0] - RiseTimeValueInBx)*bx2nanosecond;
+		  
+		  if(IsTmaxAPD)
+			{ Xtaltime = T_max_APD;
+			}else{ Xtaltime = T_rise; } // Reads either T_max_APD or T_Rise ; still have to automate T_Matacq subtracted here!
+
 
 	      const EcalElectronicsId eid = x.elecId;
 	      int SCId = eid.towerId(); // SC Id
@@ -652,25 +689,24 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
 	      //int xtalInVFE = eid.xtalId();
 
 	      // Loop over number crystals in EE
-	      xtaltimeDistEE_RunB->Fill( (x.tmax[0]-nominalTimeInBx)*bx2nanosecond);
-	      XtaltimeVsAmpEE_RunB->Fill(x.qmax[0],(x.tmax[0]-nominalTimeInBx)*bx2nanosecond);
+	      xtaltimeDistEE_RunB->Fill( Xtaltime);
+	      XtaltimeVsAmpEE_RunB->Fill(x.qmax[0], Xtaltime);
 	      //	        XtaltimeVsTimeEE_RunB->Fill( x.time[0],(x.tmax[0]-nominalTimeInBx)*bx2nanosecond);
 	      
-	      XtaltimeVsFedIDEE_RunB->Fill(x.fed,(x.tmax[0]-nominalTimeInBx)*bx2nanosecond);
+	      XtaltimeVsFedIDEE_RunB->Fill(x.fed,Xtaltime);
 	      
 	      if(x.fed >=601 && x.fed <= 609)
 		{
 		  
 		  // For EE Minus
 		  int eehistprofm = EExtalfed - 601;
-		  float crytime = (x.tmax[0]-nominalTimeInBx)*bx2nanosecond;
-		  CCUAvgTimeEEM_RunB[eehistprofm]->Fill(ix, iy, crytime);
+		  CCUAvgTimeEEM_RunB[eehistprofm]->Fill(ix, iy, Xtaltime);
 		  
-		  FedAvgTimingEEM_RunB->Fill(ix,iy,(x.tmax[0]-nominalTimeInBx)*bx2nanosecond);
-		  ccutimeEEMrunB->Fill(ix,iy,(x.tmax[0]-nominalTimeInBx)*bx2nanosecond); // CCU 5by5 bining in EEM  runB check with data
+		  FedAvgTimingEEM_RunB->Fill(ix,iy,Xtaltime);
+		  ccutimeEEMrunB->Fill(ix,iy,Xtaltime); // CCU 5by5 bining in EEM  runB check with data
 
 		  // Fill Arrays for EEM
-		  CCUInFedTimesEEM_runB[eehistprofm][SCId -1]  += crytime;
+		  CCUInFedTimesEEM_runB[eehistprofm][SCId -1]  +=  Xtaltime;
 		  CCUInFedNumEntriesEEM_runB[eehistprofm][SCId -1] ++;      //  Just to check still has lots to do here!
 
 		}else
@@ -679,13 +715,13 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
 		  //cout << "Plus EE crystals" << endl;
 		  // For EE Plus
 		  int eehistprofp = EExtalfed - 646;
-		  float crytime = (x.tmax[0]-nominalTimeInBx)*bx2nanosecond;
-		  CCUAvgTimeEEP_RunB[eehistprofp]->Fill(ix, iy, crytime);
-		  FedAvgTimingEEP_RunB->Fill(ix,iy,(x.tmax[0]-nominalTimeInBx)*bx2nanosecond);
-		  ccutimeEEPrunB->Fill(ix,iy,(x.tmax[0]-nominalTimeInBx)*bx2nanosecond); // CCU 5by5 bining in EEP  runB check with data
+		  
+		  CCUAvgTimeEEP_RunB[eehistprofp]->Fill(ix, iy, Xtaltime);
+		  FedAvgTimingEEP_RunB->Fill(ix,iy, Xtaltime);
+		  ccutimeEEPrunB->Fill(ix,iy,Xtaltime); // CCU 5by5 bining in EEP  runB check with data
 
 		  // Fill Array for EEP
-		  CCUInFedTimesEEP_runA[eehistprofp][SCId -1]  += crytime;
+		  CCUInFedTimesEEP_runA[eehistprofp][SCId -1]  += Xtaltime;
 		  CCUInFedNumEntriesEEP_runA[eehistprofp][SCId -1] ++;
 
 		}
@@ -693,8 +729,8 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
 	    }
     
 	    //Fill generally for all sturff.
-	    XtaltimeVsEta_RunB->Fill(x.eta, (x.tmax[0]-nominalTimeInBx)*bx2nanosecond);
-	    XtaltimeVsRun_RunB->Fill( x.run,(x.tmax[0]-nominalTimeInBx)*bx2nanosecond);
+	    XtaltimeVsEta_RunB->Fill(x.eta, x.tmax[0]);  // Only these guys out of loop still have T_APD
+	    XtaltimeVsRun_RunB->Fill( x.run,x.tmax[0]);
 	    
 	    numcrys +=numcrys;
 	    
@@ -821,13 +857,13 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
   CrysTimeShiftEB = SubtractTwoTProfile2D(FedAvgTimingEB,  FedAvgTimingEB_RunB);
   CrysTimeShiftEB ->SetMinimum(lbin);
   CrysTimeShiftEB->SetMaximum(hbin);
-  SaveCanvasInDir(CrysTimeShiftEB);
+  SaveEB_EECanvasInDir(CrysTimeShiftEB);
   
   // 5by5 bining
   ccutshiftEB = SubtractTwoTProfile2D(ccutimeEBrunA, ccutimeEBrunB);
   ccutshiftEB ->SetMinimum(lbin);
   ccutshiftEB->SetMaximum(hbin);
-  SaveCanvasInDir(ccutshiftEB);
+  SaveEB_EECanvasInDir(ccutshiftEB);
   // Project 1D here!
   EBccu1dprojection = make1dProjection(ccutshiftEB);
   //  Savehist(EBccu1dprojection);
@@ -837,13 +873,13 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
   CrysTimeShiftEEP = SubtractTwoTProfile2D(FedAvgTimingEEP, FedAvgTimingEEP_RunB);
   CrysTimeShiftEEP->SetMinimum(lbin);
   CrysTimeShiftEEP->SetMaximum(hbin);
-  SaveCanvasInDir(CrysTimeShiftEEP);
+  SaveEB_EECanvasInDir(CrysTimeShiftEEP);
 
   // 5by5 bining
   ccutshiftEEP = SubtractTwoTProfile2D(ccutimeEEPrunA, ccutimeEEPrunB);
   ccutshiftEEP ->SetMinimum(lbin);
   ccutshiftEEP->SetMaximum(hbin);
-  SaveCanvasInDir(ccutshiftEEP);   
+  SaveEB_EECanvasInDir(ccutshiftEEP);   
 
 
   // Project 1D here!
@@ -855,13 +891,13 @@ AdjustEcalTimingFromLaser::analyze(const edm::Event& iEvent, const edm::EventSet
   CrysTimeShiftEEM = SubtractTwoTProfile2D(FedAvgTimingEEM, FedAvgTimingEEM_RunB);
   CrysTimeShiftEEM->SetMinimum(lbin);
   CrysTimeShiftEEM->SetMaximum(hbin);
-  SaveCanvasInDir(CrysTimeShiftEEM);   
+  SaveEB_EECanvasInDir(CrysTimeShiftEEM);   
   
   // 5by5 bining
   ccutshiftEEM = SubtractTwoTProfile2D(ccutimeEEMrunA, ccutimeEEMrunB);
   ccutshiftEEM ->SetMinimum(lbin);
   ccutshiftEEM->SetMaximum(hbin);
-  SaveCanvasInDir(ccutshiftEEM);           
+  SaveEB_EECanvasInDir(ccutshiftEEM);           
 
   // Project 1D here!
   EEMccu1dprojection = make1dProjection(ccutshiftEEM);
@@ -1455,6 +1491,7 @@ AdjustEcalTimingFromLaser::init_ttree(TTree * t, struct ntu_xtals * x)
     tx->SetBranchStatus("wl",1);
     tx->SetBranchStatus("qmax",1);
     tx->SetBranchStatus("tmax",1);
+	tx->SetBranchStatus("l_rise_time",1);
 	tx->SetBranchStatus("dtdc",1);
 }
 
@@ -1589,7 +1626,7 @@ AdjustEcalTimingFromLaser::SubtractTwoTProfile2D( TProfile2D* hprof_runA, TProfi
 	  
 	  // you need to have two valid averages to consider a CCU for the average difference
 
-	  if ((nentriesA==0 || nentriesB==0))  //|| fabs(timeA)> 20 || fabs(timeB)> 20) // Set timeshift for empty bins to  white  with really large time Shift.
+	  if ((nentriesA==0 || nentriesB==0))//|| fabs(timeA)> 20 || fabs(timeB)> 20) // Set timeshift for empty bins to  white  with really large time Shift.
 		{
 		  timeshift = timeValueNoData; }
 	  // handle/skip CCU without reading  at either runs
@@ -1630,7 +1667,7 @@ AdjustEcalTimingFromLaser::SubtractTwoTProfile2D( TProfile2D* hprof_runA, TProfi
 
 
 
-//////////// Fxn To Save Canvas In Directory ///////////////
+//////////// Fxn To SM SaveCanvas In Directory ///////////////
 
 void AdjustEcalTimingFromLaser::SaveCanvasInDir( TProfile2D* mytprof)
 {
@@ -1649,7 +1686,7 @@ void AdjustEcalTimingFromLaser::SaveCanvasInDir( TProfile2D* mytprof)
 
   mytprof->GetXaxis()->SetTitle("i#phi");
   mytprof->GetYaxis()->SetTitle("i#eta");
-  mytprof->Draw("colztext"); // Where text happens. // Since this function is the one saving TProfile2D, removing the colztext does soo for each Feds as well as ALL EB/EE
+  mytprof->Draw("colztext"); 
   std::string filename=dirOutPutPlotsname;
   filename += mytprof->GetTitle();
   filename += ".png";
@@ -1658,6 +1695,33 @@ void AdjustEcalTimingFromLaser::SaveCanvasInDir( TProfile2D* mytprof)
 } // end of fxn to save canvas.
 
 
+//######### Fxn to SaveEB/EE Canvanses With No Text Mode ######
+//////////// Fxn To Save Canvas In Directory ///////////////
+
+void AdjustEcalTimingFromLaser::SaveEB_EECanvasInDir( TProfile2D* mytprof)
+{
+
+  TStyle mystyle;
+
+  mystyle.SetPalette(1,0);
+  mystyle.SetLabelColor(kBlack,"xyz");
+  mystyle.SetTitleColor(kBlack);
+  mystyle.SetLegendBorderSize(0.2);
+  mystyle.SetStatH(0.2);
+  mystyle.SetOptStat(111111);
+
+  TCanvas myCanvas;
+  myCanvas.cd();
+
+  mytprof->GetXaxis()->SetTitle("i#phi");
+  mytprof->GetYaxis()->SetTitle("i#eta");
+  mytprof->Draw("colz"); 
+  std::string filename=dirOutPutPlotsname;
+  filename += mytprof->GetTitle();
+  filename += ".png";
+  myCanvas.Print(filename.c_str());
+  
+} // end of fxn EB/EE to save canvas.
 
 
 

@@ -13,15 +13,15 @@ process.source = cms.Source("EmptySource",
                             )
 
 process.load("Configuration.StandardSequences.FrontierConditions_GlobalTag_cff")
-process.GlobalTag. connect = cms.string('frontier://(proxyurl=http://localhost:3128)(serverurl=http://localhost:8000/FrontierOnProd)(serverurl=http://localhost:8000/FrontierOnProd)(retrieve-ziplevel=0)(failovertoserver=no)/CMS_COND_31X_GLOBALTAG')
+#process.GlobalTag. connect = cms.string('frontier://(proxyurl=http://localhost:3128)(serverurl=http://localhost:8000/FrontierOnProd)(serverurl=http://localhost:8000/FrontierOnProd)(retrieve-ziplevel=0)(failovertoserver=no)/CMS_COND_31X_GLOBALTAG')
 # tag below tested in CMSSW_4_3_0_pre3
-#process.GlobalTag.globaltag = 'GR_R_42_V14::All'
+process.GlobalTag.globaltag = 'GR_R_42_V14::All'
 
 #this one below is specific of P5
 #process.GlobalTag.globaltag = 'GR_H_V24::All'
 #process.GlobalTag.globaltag = 'GR10_P_V12::All'
 #process.GlobalTag.globaltag = 'GR_H_V23::All'
-process.GlobalTag.globaltag = 'GR_H_V24::All'  # to be used inside P5, fall 2011
+#process.GlobalTag.globaltag = 'GR_H_V24::All'  # to be used inside P5, fall 2011
 
 
 
@@ -31,24 +31,25 @@ process.load("Configuration.StandardSequences.Geometry_cff")
 
 process.demo = cms.EDAnalyzer('AdjustEcalTimingFromLaser',
 
-                              doDebugMessages = cms.bool(True),
+
+                              doDebugMessages = cms.bool(False), #False means don't getCCUId and Timing shift.
                               
                               # Tambe tests with this directory
                               # dirInPutFilesname = cms.string("/hdfs/cms/user/norbert/data/Validlaser/"),
                               # gio tests with this OTHER directory
                               # dirInPutFilesname = cms.string("/data/franzoni/data/LaserSelected/"),
                               # the following one is for P5
-                              dirInPutFilesname = cms.string("/nfshome0/franzoni/data/LaserSelected/"),
+                              dirInPutFilesname = cms.string("/hdfs/cms/user/norbert/data/file22march/"),
 
                               # directory where the output plots will be stored
-                              dirOutPutPlotsname = cms.string("LaserTimingShiftRun163297VsRun1634833/"),
+                              dirOutPutPlotsname = cms.string("LaserTimingShift_No_AvegSubtraction_April08_Run163337VsRun163338"),
                               # name of the output .root file
-                              fileOutPutName = cms.string("output-file.root"),
+                              fileOutPutName = cms.string("EcalLaserTimingRun163337VsRun163338_April08No_Ave_Subtraction.root"),
 
                               # the two runs to be compared
                               # Tambe uses these runs
-                              RunB4TS = cms.int32(163291), 
-                              RunAFTS = cms.int32(163333), 
+                              RunB4TS = cms.int32(163338), 
+                              RunAFTS = cms.int32(163337), 
                               
                               # laser wavelength being considered
                               NWL = cms.int32(3), 
@@ -66,7 +67,11 @@ process.demo = cms.EDAnalyzer('AdjustEcalTimingFromLaser',
                               # the average to be subtracted is computed over:
                               #    - a whole sector, for EE feds
                               #    - separately for the two laser light distribution modules (I-shaped and L-shaped) of EB supermodules 
-                              subtractAverageDifferences       = cms.bool(True),
+                              subtractAverageDifferences       = cms.bool(False),
+                              
+                              # This Flag determines if you are using T_MAX_APD or something else
+                              # IsTmaxAPD == True, then you are using T_MAX_APD  else something else.
+                              IsTmaxAPD                        = cms.bool(True),  # False means not using T_MAX_APD.
 
                               # if a time difference is larger than this:
                               # 1) exclude it from the computation of the light-module average
@@ -78,7 +83,7 @@ process.demo = cms.EDAnalyzer('AdjustEcalTimingFromLaser',
                               
 
                               # decide whether you want only to do  analysi (False) or also connect to the database and deploy xml files (True)
-                              doHwSetFromDb               = cms.bool(True),
+                              doHwSetFromDb               = cms.bool(False),
                               # if you decide to connect to the database and deploy xml files:
                               # 1) have time-shift-corrected xml (True) or
                               # 2) xml which are the an unmodified dump of what's in the confdb 
