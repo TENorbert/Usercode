@@ -15,7 +15,7 @@ process.source = cms.Source("PoolSource",
 
 process.demo = cms.EDAnalyzer('DPAnalysis',
 
-    rootFileName     = cms.untracked.string('Photon_2012A_test.root'), # Out Put File
+    rootFileName     = cms.untracked.string('Photon_2012A_test'), # Out Put File
     triggerName      = cms.untracked.string('HLT_Photon90_CaloIdVL_IsoL_v4'),
     trigSource = cms.InputTag("TriggerResults","","HLT"),
     jetSource   = cms.InputTag("ak5PFJets"),
@@ -28,7 +28,7 @@ process.demo = cms.EDAnalyzer('DPAnalysis',
     EBRecHitCollection = cms.InputTag("reducedEcalRecHitsEB"),
     EERecHitCollection = cms.InputTag("reducedEcalRecHitsEE"),
 
-    pileupSource       = cms.InputTag("addPileupInfo"),
+#    pileupSource       = cms.InputTag("addPileupInfo"),
     # Set up cuts for physics objects
     # vertex cuts                z   ndof   d0 
     vtxCuts       = cms.vdouble( 99,    0,  99 ),

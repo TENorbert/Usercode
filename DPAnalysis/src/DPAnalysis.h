@@ -71,7 +71,8 @@
 #include <algorithm>
 
 // PU SummeryInfo
-#include "SimDataFormats/PileupSummaryInfo/interface/PileupSummaryInfo.h" 
+//#include "SimDataFormats/PileupSummaryInfo/interface/PileupSummaryInfo.h"
+
 #include <TMath.h>
 #include "TFile.h"
 #include "TTree.h"
@@ -157,7 +158,7 @@ class DPAnalysis : public edm::EDAnalyzer {
 
       edm::InputTag EBRecHitCollection;
       edm::InputTag EERecHitCollection;
-      edm::InputTag pileupSource ;
+	  //      edm::InputTag pileupSource ;
 
 	  edm::InputTag genSrc ;
 

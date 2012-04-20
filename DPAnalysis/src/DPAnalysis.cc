@@ -45,7 +45,7 @@ DPAnalysis::DPAnalysis(const edm::ParameterSet& iConfig){
    EBRecHitCollection   = iConfig.getParameter<edm::InputTag> ("EBRecHitCollection") ;
    EERecHitCollection   = iConfig.getParameter<edm::InputTag> ("EERecHitCollection") ;
  
-    pileupSource         = iConfig.getParameter<edm::InputTag>("addPileupInfo");
+   //    pileupSource         = iConfig.getParameter<edm::InputTag>("addPileupInfo");
 
    
    vtxCuts              = iConfig.getParameter<std::vector<double> >("vtxCuts");
@@ -56,14 +56,18 @@ DPAnalysis::DPAnalysis(const edm::ParameterSet& iConfig){
    electronCuts         = iConfig.getParameter<std::vector<double> >("electronCuts");
    muonCuts             = iConfig.getParameter<std::vector<double> >("muonCuts");  
    triggerName          = iConfig.getUntrackedParameter<string> ("triggerName");
-   isData               = iConfig.getUntrackedParameter<bool> ("isData");
+   isData               = iConfig.getParameter<bool> ("isData");
    genSrc               = iConfig.getParameter<edm::InputTag> ("genParticles");  // MC input source
     ctau                = iConfig.getParameter<double> ("ctau");
-   seedGenNum           = iConfig.getParameter<int> ("seedGenNum");
+   seedGenNum           = iConfig.getParameter<double> ("seedGenNum");
 
    
    gen = new GenStudy( iConfig );   // Initialise MC parameters here?
 
+
+   // Rename Files Based on MC or Data
+   if(!isData){ rootFileName += std::string("MC")+ std::string(".root");}else { rootFileName += std::string("DATA") +std::string(".root"); }
+   
    theFile  = new TFile( rootFileName.c_str(), "RECREATE") ;
    theFile->cd () ;
    theTree  = new TTree ( "DPAnalysis","DPAnalysis" ) ;
@@ -105,13 +109,13 @@ void DPAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
    leaves.runId       = iEvent.id ().run () ;
    leaves.eventId     = iEvent.id ().event () ;
 
-   Handle<std::vector< PileupSummaryInfo > >  PupInfo;
-   iEvent.getByLabel(pileupSource, PupInfo);
+//    Handle<std::vector< PileupSummaryInfo > >  PupInfo;
+//    iEvent.getByLabel(pileupSource, PupInfo);
 
-   //  Pile-Up information for each BX
-   for( std::vector<PileupSummaryInfo>::const_iterator PVI = PupInfo->begin(); PVI != PupInfo->end(); ++PVI) {
-       std::cout << " Pileup Information: bunchXing, nvtx: " << PVI->getBunchCrossing() << " " << PVI->getPU_NumInteractions() << std::endl;
-   }
+//    //  Pile-Up information for each BX
+//    for( std::vector<PileupSummaryInfo>::const_iterator PVI = PupInfo->begin(); PVI != PupInfo->end(); ++PVI) {
+//        std::cout << " Pileup Information: bunchXing, nvtx: " << PVI->getBunchCrossing() << " " << PVI->getPU_NumInteractions() << std::endl;
+//    }
 
 
    if (counter[0] <= 1 )  PrintTriggers( iEvent ) ;
