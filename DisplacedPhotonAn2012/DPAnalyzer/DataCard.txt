@@ -1,0 +1,46 @@
+
+#This is the data card for the input of M2M3 analysis and TopMassFitter 
+# Auther : SCKao - UMN
+#
+
+# root files directory
+RootFiles =
+
+# Folder to store results
+Path = Results/
+
+# plot type : png / gif / eps / jpg / pdf 
+PlotType = png
+#Data
+# Files , '+' is the flag for TChain,  
+# TheData =(SinglePhotonData2012B_Ntuple_NO_JETID)
+# TheData =(SinglePhoton2012B_Medium_Spike_Cleaning_Ntuple_Sep03)
+TheData =(SinglePhoton2012C-Reco-Skimv123_Ntuple)
+#TheData   = (SinglePhoton2012C-Promptreco-v1_and_v2-Halo-Tagged_With-dphi06-Ntuple-Oct10)
+#MC
+#TheData =(GMSB_Lambda_140_ctau_2000mm_MediumS_Spike_Cleaning_Ntuple_Sept01)
+#TheData =(GMSB_Lambda_140_CTau-2000_TuneZ2star_8TeV-pythia6_Summer2012_Ntuple_Medium_Spike_Kill)
+#dataChain = ( genscan1k, genscan2k )
+
+# -1 : all of events
+ProcessEvents = -1
+
+#Photon Cuts  Pt,   MaxPt,  eta, sMajMax, sMinorMin, sMinorMax, Num
+photonCuts = (40.0,  60.0,  2.5,  999.0,  0.15,  0.30,   1)
+
+#           Pt, nJetMin, nJetMax              
+JetCuts = ( 30,   0.0,    99.0 )
+#          1=Photon50, 2=DPTrig , 3=ALL 2 Trig
+#TrigCut = ( 0,2)  
+TrigCut = (1,2)  
+
+#Met cuts
+MetCuts  = ( 0.0)
+
+#HaloCuts  #SmajorEB, CSCdPhi
+HaloCuts = ( 0.786, 0.0315)
+#PhotonIso Cuts
+photonIso = (  )
+
+#JetID Cuts
+JetIdCuts = ( ) 
