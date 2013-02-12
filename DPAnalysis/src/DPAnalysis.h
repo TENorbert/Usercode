@@ -15,25 +15,32 @@
 //
 // Original Author:  Shih-Chuan Kao
 //         Created:  Thu Sep 29 05:26:22 CDT 2011
-// $Id: DPAnalysis.h,v 1.2 2012/04/19 19:35:15 sckao Exp $
-//
+// $Id: DPAnalysis.h,v 1.17 2012/09/24 22:43:13 sckao Exp $
+// $ Adjusted by Tambe E. Norbert   Feb 11 2013.$ 
 //
 
 
 // system include files
 #include <memory>
-
+#include <string>
+#include <cmath>
+#include <iostream>
+#include <cmath>
 // user include files
 #include "FWCore/Framework/interface/Frameworkfwd.h"
 #include "FWCore/Framework/interface/EDAnalyzer.h"
-
+#include "FWCore/MessageLogger/interface/MessageLogger.h"
+#include "FWCore/Framework/interface/eventsetuprecord_registration_macro.h"
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
-
+#include "FWCore/Framework/interface/ESHandle.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 
 #include "DataFormats/Common/interface/TriggerResults.h"
 #include "FWCore/Common/interface/TriggerNames.h"
+#include "DataFormats/HLTReco/interface/TriggerObject.h"
+#include "DataFormats/HLTReco/interface/TriggerEvent.h"
+#include "DataFormats/Math/interface/deltaR.h"
 
 #include "DataFormats/ParticleFlowCandidate/interface/PFCandidate.h"
 #include "DataFormats/ParticleFlowReco/interface/PFBlock.h"
@@ -61,6 +68,17 @@
 
 #include "DataFormats/METReco/interface/BeamHaloSummary.h"
 
+#include "DataFormats/TrackReco/interface/Track.h"
+#include "DataFormats/TrackReco/interface/TrackFwd.h"
+
+// L1 Trigger 
+#include "CondFormats/L1TObjects/interface/L1GtTriggerMenu.h"
+#include "CondFormats/DataRecord/interface/L1GtTriggerMenuRcd.h"
+#include "CondFormats/DataRecord/interface/EcalIntercalibConstantsRcd.h"
+#include "DataFormats/L1GlobalTrigger/interface/L1GlobalTriggerReadoutSetupFwd.h"
+#include "DataFormats/L1GlobalTrigger/interface/L1GlobalTriggerReadoutSetup.h"
+#include "DataFormats/L1GlobalTrigger/interface/L1GlobalTriggerReadoutRecord.h"
+
 // for ECAL cluster
 #include "DataFormats/EgammaReco/interface/BasicCluster.h"
 #include "DataFormats/EgammaReco/interface/BasicClusterFwd.h"
@@ -70,8 +88,63 @@
 #include "RecoEcal/EgammaCoreTools/interface/EcalClusterTools.h"
 #include <algorithm>
 
+// for CSC Segment
+#include "Geometry/CSCGeometry/interface/CSCGeometry.h"
+#include "Geometry/CSCGeometry/interface/CSCChamber.h"
+#include "DataFormats/CSCRecHit/interface/CSCSegment.h"
+#include "DataFormats/CSCRecHit/interface/CSCSegmentCollection.h"
+#include "Geometry/Records/interface/MuonGeometryRecord.h"
+#include "DataFormats/MuonDetId/interface/CSCDetId.h"
+
+#include "DataFormats/METReco/interface/CSCHaloData.h"
+#include "DataFormats/GeometryVector/interface/GlobalPoint.h"
+#include "DataFormats/GeometryVector/interface/GlobalVector.h"
+#include "DataFormats/GeometryVector/interface/LocalPoint.h"
+#include "DataFormats/GeometryVector/interface/LocalVector.h"
+#include "DataFormats/CLHEP/interface/AlgebraicObjects.h"
+#include "DataFormats/MuonDetId/interface/CSCIndexer.h"
+
+#include "Geometry/CSCGeometryBuilder/plugins/CSCGeometryESModule.h"
+
+#include "Geometry/Records/interface/CSCRecoGeometryRcd.h"
+#include "Geometry/Records/interface/IdealGeometryRecord.h"
+#include "Geometry/Records/interface/GlobalTrackingGeometryRecord.h"
+#include "Geometry/Records/interface/MuonGeometryRecord.h"
+#include "MagneticField/Records/interface/IdealMagneticFieldRecord.h"
+#include "MagneticField/Engine/interface/MagneticField.h"
+
+
+// Detector geometry
+#include "Geometry/CaloGeometry/interface/CaloGeometry.h"
+#include "Geometry/Records/interface/CaloGeometryRecord.h"
+#include "Geometry/CaloGeometry/interface/CaloCellGeometry.h"
+
+// DetId & HCAL stuff 
+#include "DataFormats/DetId/interface/DetId.h"
+#include "DataFormats/EcalDetId/interface/EBDetId.h"
+#include "DataFormats/Candidate/interface/Particle.h"
+#include "DataFormats/Common/interface/Ref.h"
+#include "DataFormats/CaloTowers/interface/CaloTowerCollection.h"
+#include "DataFormats/HcalRecHit/interface/HBHERecHit.h"
+#include "DataFormats/HcalDigi/interface/HBHEDataFrame.h"
+#include "DataFormats/CaloRecHit/interface/CaloRecHit.h"
+#include "DataFormats/CaloRecHit/interface/CaloRecHit.h"
+#include "DataFormats/CaloRecHit/interface/CaloCluster.h"
+#include "DataFormats/CaloRecHit/interface/CaloClusterFwd.h"
+#include "DataFormats/HcalRecHit/interface/HcalRecHitCollections.h"
+
+// Calibration Services
+#include "CondFormats/EcalObjects/interface/EcalIntercalibConstants.h"
+#include "CondFormats/DataRecord/interface/EcalIntercalibConstantsRcd.h"
+#include "CondFormats/EcalObjects/interface/EcalADCToGeVConstant.h"
+#include "CondFormats/DataRecord/interface/EcalADCToGeVConstantRcd.h"
+#include "CalibCalorimetry/EcalLaserCorrection/interface/EcalLaserDbService.h"
+#include "CalibCalorimetry/EcalLaserCorrection/interface/EcalLaserDbRecord.h"
+#include "RecoEcal/EgammaCoreTools/interface/EcalTools.h"
+#include "CalibCalorimetry/EcalTiming/interface/timeVsAmpliCorrector.h"
+
 // PU SummeryInfo
-//#include "SimDataFormats/PileupSummaryInfo/interface/PileupSummaryInfo.h"
+//#include "SimDataFormats/PileupSummaryInfo/interface/PileupSummaryInfo.h" 
 
 #include <TMath.h>
 #include "TFile.h"
@@ -83,11 +156,26 @@
 #include <Math/VectorUtil.h>
 
 using namespace std ;
+using namespace edm ;
+using namespace reco;
 
 //
 // class declaration
 //
 typedef std::pair<reco::SuperClusterRef, float> ParticleSC  ;
+
+struct PhoInfo {
+
+  double t    ;
+  double dt   ;
+  double nchi2  ;
+  double fSpike ;
+  double maxSX  ;
+  int    nxtals ;  
+  int    nBC    ;
+
+
+} ;
 
 
 class DPAnalysis : public edm::EDAnalyzer {
@@ -97,14 +185,28 @@ class DPAnalysis : public edm::EDAnalyzer {
 
       virtual void analyze(const edm::Event&, const edm::EventSetup&);
 
-      bool EventSelection( const edm::Event& iEvent );
+      bool EventSelection( const edm::Event& iEvent, const edm::EventSetup& iSetup );
 
-      int  TriggerSelection( const edm::Event& iEvent, int cutVal, string str_head = "HLT_Photon", string str_body = "_CaloIdVL_IsoL" ) ;
-      bool TriggerSelection( const edm::Event& iEvent ) ;
+      void CSCHaloCleaning( const edm::Event& iEvent, vector<const reco::Photon*>& selectedPhotons )  ;
+
+      bool L1TriggerSelection( const edm::Event& iEvent, const edm::EventSetup& iSetup ) ;
+
+      void TriggerTagging( edm::Handle<edm::TriggerResults> triggers, const edm::TriggerNames& trgNameList, int RunID, vector<int>& firedTrig ) ;
+      bool TriggerSelection( edm::Handle<edm::TriggerResults> triggers, vector<int> firedTrig ) ;
+      //bool TriggerSelection( const edm::Event& iEvent, int RunID ) ;
  
+      template<typename object>
+      bool GetTrgMatchObject( object, const edm::Event& iEvent, edm::InputTag inputProducer_ ) ;
+
       bool VertexSelection( edm::Handle<reco::VertexCollection> vtx ) ;
 
-      bool PhotonSelection(  edm::Handle<reco::PhotonCollection> photons,vector<const reco::Photon*>& selectedPhotons ) ;
+      bool PhotonSelection(  edm::Handle<reco::PhotonCollection> photons, edm::Handle<EcalRecHitCollection> recHitsEB, edm::Handle<EcalRecHitCollection> recHitsEE, edm::Handle<reco::TrackCollection> tracks, vector<const reco::Photon*>& selectedPhotons ) ;
+
+      pair<double,double> ClusterTime( reco::SuperClusterRef scRef, edm::Handle<EcalRecHitCollection> recHitsEB, edm::Handle<EcalRecHitCollection> recHitsEE ) ;
+      void ClusterTime( reco::SuperClusterRef scRef, edm::Handle<EcalRecHitCollection> recHitsEB, edm::Handle<EcalRecHitCollection> recHitsEE, PhoInfo& phoTmp, bool useAllClusters = false ) ;
+      //void ClusterTime( reco::SuperClusterRef scRef, edm::Handle<EcalRecHitCollection> recHitsEB, edm::Handle<EcalRecHitCollection> recHitsEE, double& aveTime, double& aveTimeErr, double& nChi2, bool useAllClusters = false ) ;
+
+      //double HLTMET( edm::Handle<reco::PFJetCollection> jets, vector<const reco::Muon*>& selectedMuons, bool addMuon = false ) ;
 
       bool JetSelection( edm::Handle<reco::PFJetCollection> jets, vector<const reco::Photon*>& selectedPhotons,
                                                                      vector<const reco::PFJet*>& selectedJets ) ;
@@ -120,6 +222,12 @@ class DPAnalysis : public edm::EDAnalyzer {
 
       bool GammaJetVeto( vector<const reco::Photon*>& selectedPhotons, vector<const reco::PFJet*>& selectedJets) ;
 
+      bool BeamHaloMatch( edm::Handle<CSCSegmentCollection> cscSeg, vector<const reco::Photon*>& selectedPhotons, const edm::EventSetup& iSetup ) ;
+
+      // My Added Function for HE Halo Tagging
+      //bool HEBeamHaloMatch(edm::Handle<HBHERecHitCollection> hehit, vector<const reco::Photon*> & selectedPhotons, const edm::EventSetup&  iSetup);
+      bool HEBeamHaloMatch(edm::Handle<edm::SortedCollection<HBHERecHit> > hehit, vector<const reco::Photon*> & selectedPhotons, const edm::EventSetup&  iSetup);
+   
    private:
 
       Ntuple leaves ;
@@ -127,27 +235,17 @@ class DPAnalysis : public edm::EDAnalyzer {
       TTree *theTree;
 
       TFile *theFile;
-
       GenStudy *gen ; 
-      /*
-      virtual void beginJob() ;
-      virtual void analyze(const edm::Event&, const edm::EventSetup&);
-      virtual void endJob() ;
-
-      virtual void beginRun(edm::Run const&, edm::EventSetup const&);
-      virtual void endRun(edm::Run const&, edm::EventSetup const&);
-      virtual void beginLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&);
-      virtual void endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&);
-      */
 
       // ----------member data ---------------------------
       string rootFileName;
-      string triggerName ;
+      std::vector<string> triggerPatent ;
       bool isData ;
-	  double ctau;
-	  double seedGenNum ;
-	  
+      bool L1Select ;
+      string l1GTSource ;
+
       edm::InputTag trigSource;
+      edm::InputTag trigEvent;
       edm::InputTag pvSource;
       edm::InputTag beamSpotSource;
       edm::InputTag muonSource;
@@ -155,12 +253,21 @@ class DPAnalysis : public edm::EDAnalyzer {
       edm::InputTag photonSource;
       edm::InputTag metSource;
       edm::InputTag jetSource;
+      edm::InputTag trackSource;
 
       edm::InputTag EBRecHitCollection;
       edm::InputTag EERecHitCollection;
-	  //      edm::InputTag pileupSource ;
+      edm::InputTag CSCSegmentTag ;
+      edm::InputTag cscHaloTag ;
+      //edm::InputTag pileupSource ;
+      
+      edm::InputTag hbhereco;   // HE halotag
 
-	  edm::InputTag genSrc ;
+      edm::ESHandle<EcalIntercalibConstants> ical;
+      edm::ESHandle<EcalADCToGeVConstant> agc;
+      edm::ESHandle<EcalLaserDbService> laser;
+      edm::ESHandle<CaloGeometry> pGeometry ;
+      const CaloGeometry * theGeometry ;
 
       std::vector<double> muonCuts ;
       std::vector<double> electronCuts ;
@@ -176,12 +283,22 @@ class DPAnalysis : public edm::EDAnalyzer {
       std::vector<const reco::Photon*> selectedPhotons ;
 
       bool passEvent ;
-
       int counter[10] ; 
-      
       float sMin_ ;
+      int runID_ ;
+
+      timeCorrector theTimeCorrector_;
+      edm::Timestamp eventTime ;
+
+      std::vector<int> firedTrig ;
+      int targetTrig ;
+      //std::vector<int> firedTrigID ;
+      ///string TriggerName ;
+      bool passL1 ;
+      bool passHLT ;
 
 
+      bool debugT ; 
 };
 
 #endif
