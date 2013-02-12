@@ -5,11 +5,10 @@
 
 #define MAXVTX 10
 #define MAXJET 15
-#define MAXPHO 5
+#define MAXPHO 10
 #define MAXMU 5
 #define MAXELE 5
 #define MAXGEN 20
-
 
 struct Ntuple
 {
@@ -20,9 +19,26 @@ struct Ntuple
   unsigned int bx;
   unsigned int eventId;
   int triggered ;
+  int L1a;  
+  bool IscscHaloSeg_Tag;
+  bool IscscHaloTrk_Tag;
+  bool IsBeamHaloIDTightTag;
+  bool IscscHaloTight_Tag;
+  bool IsMyGammaJet_Tag; 
+  bool IsSCGammaJet_Tag;
+
+  int nOutTimeHits ;
+  int nHaloTrack ;
+  float haloPhi ;
+  float haloRho ;
   
+  int nTrksSmallBeta ;
+  int nHaloSegs ;
+  
+
   // vertex variables
   int   nVertices;
+  int   totalNVtx ;
   float vtxNTracks[MAXVTX];
   float vtxChi2[MAXVTX];
   float vtxNdof[MAXVTX];
@@ -45,10 +61,25 @@ struct Ntuple
   float jetCHF[MAXJET];
   float jetNHF[MAXJET];
   float jetNEF[MAXJET];
+  float jetEta[MAXJET];
+  float jetCHEF[MAXJET];
   
+  float phi_Gamma_Jet;
+  float dR_Gamma_Jet;
+
   float metPx;
   float metPy;
   float met;
+
+  float t_metPx;
+  float t_metPy;
+  float t_met;
+  float t_metdR;
+  float t_phoPx;
+  float t_phoPy;
+  float t_phoPz;
+  float t_phoE;
+  float t_phodR;
 
   int   nElectrons ;
   float elePx[MAXELE];
@@ -74,10 +105,39 @@ struct Ntuple
   float phoEcalIso[MAXPHO];
   float phoHcalIso[MAXPHO];
   float phoTrkIso[MAXPHO];
+  float dR_TrkPho[MAXPHO];
+  float pt_TrkPho[MAXPHO];
   float phoHoverE[MAXPHO];
-  float phoTime[MAXPHO];
   float sMinPho[MAXPHO];
   float sMajPho[MAXPHO];
+  float seedTime[MAXPHO];
+  float seedTimeErr[MAXPHO];
+  float aveTime[MAXPHO];
+  float aveTime1[MAXPHO];
+  float aveTimeErr[MAXPHO];
+  float aveTimeErr1[MAXPHO];
+  float timeChi2[MAXPHO] ;
+  float fSpike[MAXPHO] ;
+  float maxSwissX[MAXPHO] ;
+  float seedSwissX[MAXPHO] ;
+  float sigmaEta[MAXPHO] ;
+  float sigmaIeta[MAXPHO] ;
+  float SigmaIetaIeta[MAXPHO]; // SigmaIetaIeta
+  float SigmaEtaEta[MAXPHO]; // SigmaEtaEta
+  int   nXtals[MAXPHO] ;
+  int   nBC[MAXPHO] ;
+  // csc Halo tag
+  float cscTime[MAXPHO];
+  float cscdPhi[MAXPHO];
+  float cscR[MAXPHO];
+  float cscEta[MAXPHO];
+  // HE halo Tag
+  float HERho[MAXPHO];
+  float HETime[MAXPHO];
+  float HEGPhi[MAXPHO];
+  float HERadius[MAXPHO];
+  float HEEnergy[MAXPHO];
+  float HEdphi[MAXPHO];
 
   // Gen Particle information
   int nGen ; 
@@ -87,19 +147,11 @@ struct Ntuple
   float genPy[MAXGEN] ; 
   float genPz[MAXGEN] ; 
   float genE[MAXGEN] ; 
+  float genM[MAXGEN] ; 
   float genVx[MAXGEN] ; 
   float genVy[MAXGEN] ; 
   float genVz[MAXGEN] ; 
-  float genT[MAXGEN] ;
-
-  
-  float genEta[MAXGEN] ; 
-  float genPhi[MAXGEN] ; 
-  int   genNdau[MAXGEN] ; 
-  int   genChg[MAXGEN] ; 
-  float genM[MAXGEN] ;
-  float genD[MAXGEN] ;
-  
+  float genT[MAXGEN] ; 
 
 };
 
